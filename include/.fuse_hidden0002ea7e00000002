@@ -1,0 +1,474 @@
+#ifndef LOAD_H
+#define LOAD_H
+
+namespace device
+{
+
+//initialize DELL matrix
+// template <typename INDEX_TYPE, typename VALUE_TYPE>
+// void Initialize_Matrix(	dcsr_matrix_B<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &mat)
+// {
+// 	mat_info<INDEX_TYPE> infoMat;
+// 	get_matrix_info(mat, infoMat);
+
+// 	const size_t NUM_BLOCKS = BLOCKS;
+// 	const size_t BLOCK_SIZE = BLOCK_THREADS;
+
+// 	InitializeMatrix_dcsr<INDEX_TYPE, VALUE_TYPE> <<<NUM_BLOCKS, BLOCK_SIZE>>> (
+// 			infoMat.num_rows,
+// 			infoMat.num_chunks,
+// 			infoMat.chunk_width,
+// 			infoMat.chunk_length,
+// 			infoMat.pitch,
+// 			TPC(&mat.Matrix_MD[0]),
+// 			TPC(&mat.ci[0]),
+// 			TPC(&mat.cl[0]),
+// 			TPC(&mat.ca[0]),
+// 			TPC(&mat.rs[0]));
+// }
+
+//initialize DELL matrix
+template <typename INDEX_TYPE, typename VALUE_TYPE>
+void Initialize_Matrix(	dcsr_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &mat)
+{
+	mat_info<INDEX_TYPE> infoMat;
+	get_matrix_info(mat, infoMat);
+
+	const size_t NUM_BLOCKS = BLOCKS;
+	const size_t BLOCK_SIZE = BLOCK_THREADS;
+
+	InitializeMatrix_dcsr<INDEX_TYPE, VALUE_TYPE> <<<NUM_BLOCKS, BLOCK_SIZE>>> (
+			infoMat.num_rows,
+			infoMat.chunk_length,
+			TPC(&mat.Matrix_MD[0]),
+			TPC(&mat.row_offsets[0]));
+}
+
+//*******************************************************************************************//
+//Fill matrices from a COO matrix
+//*******************************************************************************************//
+// template <typename INDEX_TYPE, typename VALUE_TYPE>
+// void LoadMatrix(	dcsr_matrix_B<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &mat,
+// 					cusp::array1d<INDEX_TYPE, cusp::device_memory> &rows,
+// 					cusp::array1d<INDEX_TYPE, cusp::device_memory> &cols,
+// 					const int N)
+// {
+// 	mat_info<INDEX_TYPE> infoMat;
+// 	get_matrix_info(mat, infoMat);
+
+// 	const size_t NUM_BLOCKS = BLOCKS;
+// 	const size_t BLOCK_SIZE = BLOCK_THREADS;
+
+// 	LoadMatrix_dcsr_B_coo<INDEX_TYPE, VALUE_TYPE> <<<NUM_BLOCKS, BLOCK_SIZE>>> (
+// 			infoMat.num_rows,
+// 			infoMat.chunk_width,
+// 			infoMat.pitch,
+// 			TPC(&rows[0]),
+// 			TPC(&cols[0]),
+// 			N,
+// 			TPC(&mat.Matrix_MD[0]),
+// 			TPC(&mat.ci[0]),
+// 			TPC(&mat.cl[0]),
+// 			TPC(&mat.ca[0]),
+// 			TPC(&mat.rs[0]),
+// 			TPC(&mat.cols[0]));
+// }
+
+template <typename INDEX_TYPE, typename VALUE_TYPE>
+void LoadMatrix(	dcsr_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &mat,
+					cusp::array1d<INDEX_TYPE, cusp::device_memory> &rows,
+					cusp::array1d<INDEX_TYPE, cusp::device_memory> &cols,
+					cusp::array1d<VALUE_TYPE, cusp::device_memory> &vals,
+					const int N)
+{
+	mat_info<INDEX_TYPE> infoMat;
+	get_matrix_info(mat, infoMat);
+
+	const size_t NUM_BLOCKS = BLOCKS;
+	const size_t BLOCK_SIZE = BLOCK_THREADS;
+
+	LoadMatrix_dcsr_coo<INDEX_TYPE, VALUE_TYPE> <<<NUM_BLOCKS, BLOCK_SIZE>>> (
+			infoMat.num_rows,
+			infoMat.chunk_width,
+			infoMat.pitch,
+			infoMat.alpha,
+			TPC(&rows[0]),
+			TPC(&cols[0]),
+			TPC(&vals[0]),
+			N,
+			TPC(&mat.Matrix_MD[0]),
+			TPC(&mat.row_indices[0]),
+			TPC(&mat.column_indices[0]),
+			TPC(&mat.row_offsets[0]),
+			TPC(&mat.values[0]));
+}
+
+template <typename INDEX_TYPE, typename VALUE_TYPE>
+void LoadMatrix(	hyb_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &mat,
+					cusp::array1d<INDEX_TYPE, cusp::device_memory> &rows,
+					cusp::array1d<INDEX_TYPE, cusp::device_memory> &cols,
+					const int N)
+{
+	mat_info<INDEX_TYPE> infoMat;
+	get_matrix_info(mat, infoMat);
+
+#if(DEBUG)
+	assert(src.num_rows == infoDst.num_rows);
+	assert(src.num_cols == infoDst.num_cols);
+#endif
+
+	const size_t NUM_BLOCKS = BLOCKS;
+	const size_t BLOCK_SIZE = BLOCK_THREADS;
+
+	LoadMatrix_hyb_B_coo<INDEX_TYPE, VALUE_TYPE> <<<NUM_BLOCKS, BLOCK_SIZE>>> (
+			infoMat.num_rows,
+			infoMat.num_cols,
+			infoMat.num_cols_per_row,
+			infoMat.pitch,
+			TPC(&rows[0]),
+			TPC(&cols[0]),
+			N,
+			TPC(&mat.row_sizes[0]),
+			TPC(&mat.matrix.ell.column_indices.values[0]),
+			TPC(&mat.matrix.coo.row_indices[0]),
+			TPC(&mat.matrix.coo.column_indices[0]));
+}
+
+template <typename INDEX_TYPE, typename VALUE_TYPE>
+void LoadMatrix(	hyb_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &mat,
+					cusp::array1d<INDEX_TYPE, cusp::device_memory> &rows,
+					cusp::array1d<INDEX_TYPE, cusp::device_memory> &cols,
+					cusp::array1d<VALUE_TYPE, cusp::device_memory> &vals,
+					const int N)
+{
+	mat_info<INDEX_TYPE> infoMat;
+	get_matrix_info(mat, infoMat);
+
+#if(DEBUG)
+	assert(src.num_rows == infoDst.num_rows);
+	assert(src.num_cols == infoDst.num_cols);
+#endif
+
+	const size_t NUM_BLOCKS = BLOCKS;
+	const size_t BLOCK_SIZE = BLOCK_THREADS;
+
+	LoadMatrix_hyb_coo<INDEX_TYPE, VALUE_TYPE> <<<NUM_BLOCKS, BLOCK_SIZE>>> (
+			infoMat.num_rows,
+			infoMat.num_cols,
+			infoMat.num_cols_per_row,
+			infoMat.pitch,
+			TPC(&rows[0]),
+			TPC(&cols[0]),
+			TPC(&vals[0]),
+			N,
+			TPC(&mat.row_sizes[0]),
+			TPC(&mat.matrix.ell.column_indices.values[0]),
+			TPC(&mat.matrix.ell.values.values[0]),
+			TPC(&mat.matrix.coo.row_indices[0]),
+			TPC(&mat.matrix.coo.column_indices[0]),
+			TPC(&mat.matrix.coo.values[0]));
+}
+
+template <typename INDEX_TYPE, typename VALUE_TYPE>
+void LoadMatrix(	cusp::csr_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &mat,
+					cusp::array1d<INDEX_TYPE, cusp::device_memory> &rows,
+					cusp::array1d<INDEX_TYPE, cusp::device_memory> &cols,
+					cusp::array1d<VALUE_TYPE, cusp::device_memory> &vals,
+					const int N)
+{
+	mat_info<INDEX_TYPE> infoMat;
+	get_matrix_info(mat, infoMat);
+
+#if(DEBUG)
+	assert(src.num_rows == infoDst.num_rows);
+	assert(src.num_cols == infoDst.num_cols);
+#endif
+
+	const size_t BLOCK_SIZE = BLOCK_THREADS;
+
+	cusp::array1d<INDEX_TYPE, cusp::device_memory> temp_rows(N);
+
+	const size_t MAX_BLOCKS_A = cusp::detail::device::arch::max_active_blocks(LoadMatrix_csr_coo<INDEX_TYPE, VALUE_TYPE>, BLOCK_SIZE, (size_t) 0);
+	const size_t NUM_BLOCKS_A = std::min<size_t>(MAX_BLOCKS_A, ROUND_UP(N, BLOCK_SIZE));
+
+	//perform a scan on the entries to determine row lengths and update the row vector
+	LoadMatrix_csr_coo<INDEX_TYPE, VALUE_TYPE> <<<NUM_BLOCKS_A, BLOCK_SIZE>>> (
+			infoMat.num_rows,
+			TPC(&rows[0]),
+			TPC(&cols[0]),
+			TPC(&vals[0]),
+			N,
+			TPC(&temp_rows[0]),
+			TPC(&mat.column_indices[0]),
+			TPC(&mat.values[0]));
+
+	const size_t MAX_BLOCKS_B = cusp::detail::device::arch::max_active_blocks(LoadMatrix_csr_count_rows<INDEX_TYPE, VALUE_TYPE>, BLOCK_SIZE, (size_t) 0);
+	const size_t NUM_BLOCKS_B = std::min<size_t>(MAX_BLOCKS_B, ROUND_UP(mat.num_rows, BLOCK_SIZE));
+
+	LoadMatrix_csr_count_rows<INDEX_TYPE, VALUE_TYPE> <<<NUM_BLOCKS_B, BLOCK_SIZE>>> (
+	 		infoMat.num_rows,
+			TPC(&rows[0]),
+			N,
+			TPC(&mat.row_offsets[0]));
+
+	thrust::sort_by_key(temp_rows.begin(), temp_rows.begin()+N,
+						thrust::make_zip_iterator(thrust::make_tuple(mat.column_indices.begin(), mat.values.begin())) );
+
+	thrust::exclusive_scan(mat.row_offsets.begin(), mat.row_offsets.end(), mat.row_offsets.begin());
+}
+
+//*******************************************************************************************//
+//Load matrices from a CSR matrix
+//*******************************************************************************************//
+template <typename INDEX_TYPE, typename VALUE_TYPE>
+void LoadMatrix(	cusp::csr_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &src,
+					cusp::ell_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &dst)
+{
+	dst.resize(src.num_rows, src.num_cols, src.num_entries, std::max(src.num_cols/16, ulong(64)));
+
+	mat_info<INDEX_TYPE> infoDst;
+	get_matrix_info(dst, infoDst);
+
+#if(DEBUG)
+	assert(src.num_rows == infoDst.num_rows);
+	assert(src.num_cols == infoDst.num_cols);
+#endif
+
+	const size_t NUM_BLOCKS = BLOCKS;
+	const size_t BLOCK_SIZE = BLOCK_THREADS;
+
+	LoadEllMatrix<INDEX_TYPE, VALUE_TYPE> <<<NUM_BLOCKS, BLOCK_SIZE>>> (
+			src.num_rows,
+			src.num_entries,
+			infoDst.num_cols_per_row,
+			infoDst.pitch,
+			TPC(&src.row_offsets[0]),
+			TPC(&src.column_indices[0]),
+			TPC(&src.values[0]),
+			TPC(&dst.column_indices.values[0]),
+			TPC(&dst.values.values[0]));
+}
+
+template <typename INDEX_TYPE, typename VALUE_TYPE>
+void LoadMatrix(	cusp::csr_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &src,
+					hyb_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &dst)
+{
+	//src.sort_by_row_and_column();
+	const INDEX_TYPE invalid_index = -1;
+	dst.resize(src.num_rows, src.num_cols, src.num_entries, 256, std::max(src.num_cols/16, ulong(96)));
+	thrust::fill(dst.matrix.ell.column_indices.values.begin(), dst.matrix.ell.column_indices.values.end(), invalid_index);
+
+	mat_info<INDEX_TYPE> infoDst;
+	get_matrix_info(dst, infoDst);
+
+#if(DEBUG)
+	assert(src.num_rows == infoDst.num_rows);
+	assert(src.num_cols == infoDst.num_cols);
+#endif
+
+	// const size_t NUM_BLOCKS = BLOCKS;
+	// const size_t BLOCK_SIZE = BLOCK_THREADS;
+
+	// LoadHybMatrix<INDEX_TYPE, VALUE_TYPE> <<<NUM_BLOCKS, BLOCK_SIZE>>> (
+	// 		src.num_rows,
+	// 		src.num_entries,
+	// 		infoDst.num_cols_per_row,
+	// 		infoDst.pitch,
+	// 		TPC(&src.row_offsets[0]),
+	// 		TPC(&src.column_indices[0]),
+	// 		TPC(&dst.row_sizes[0]),
+	// 		TPC(&dst.matrix.ell.column_indices.values[0]),
+	// 		TPC(&dst.matrix.coo.row_indices[0]),
+	// 		TPC(&dst.matrix.coo.column_indices[0]));
+}
+
+// template <typename INDEX_TYPE, typename VALUE_TYPE>
+// void LoadMatrix(	cusp::csr_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &src,
+// 					dcsr_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &dst)
+// {
+// 	#define ROW_SIZE	1024
+// 	//dst.resize(src.num_rows, src.num_cols, src.num_entries, src.num_rows*ROW_SIZE);
+
+// 	mat_info<INDEX_TYPE> infoDst;
+// 	get_matrix_info(dst, infoDst);
+
+// #if(DEBUG)
+// 	assert(src.num_rows == infoDst.num_rows);
+// 	assert(src.num_cols == infoDst.num_cols);
+// #endif
+
+// 	const size_t NUM_BLOCKS = BLOCKS;
+// 	const size_t BLOCK_SIZE = BLOCK_THREADS;
+
+// 	// LoadCSRMatrix<INDEX_TYPE, VALUE_TYPE> <<<NUM_BLOCKS, BLOCK_SIZE>>>
+
+// 	dst.num_entries = src.num_entries;
+// }
+
+//*******************************************************************************************//
+//Fill matrices from a COO format
+//*******************************************************************************************//
+template <typename INDEX_TYPE, typename VALUE_TYPE>
+void UpdateMatrix(	dcsr_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &mat,
+					cusp::array1d<INDEX_TYPE, cusp::device_memory> &rows,
+					cusp::array1d<INDEX_TYPE, cusp::device_memory> &cols,
+					cusp::array1d<VALUE_TYPE, cusp::device_memory> &vals,
+					const int N)
+{
+	mat_info<INDEX_TYPE> infoMat;
+	get_matrix_info(mat, infoMat);
+
+	// const size_t NUM_BLOCKS = BLOCKS;
+	// const size_t BLOCK_SIZE = BLOCK_THREADS;
+
+	const size_t BLOCK_SIZE = 128;
+	const size_t MAX_BLOCKS = cusp::detail::device::arch::max_active_blocks(UpdateMatrix_dcsr<INDEX_TYPE, VALUE_TYPE>, BLOCK_SIZE, (size_t) 0);
+	const size_t NUM_BLOCKS = min(int(MAX_BLOCKS), int(ROUND_UP(infoMat.num_rows, BLOCK_SIZE)));
+
+	int load_addr = mat.Matrix_MD[0];
+	fprintf(stderr, "num_rows: %d  pitch: %d  N: %d  load_addr: %d\n", infoMat.num_rows, infoMat.pitch, N, load_addr);
+
+	UpdateMatrix_dcsr<INDEX_TYPE, VALUE_TYPE> <<<NUM_BLOCKS, BLOCK_SIZE>>> (
+			infoMat.num_rows,
+			infoMat.pitch,
+			TPC(&rows[0]),
+			TPC(&cols[0]),
+			TPC(&vals[0]),
+			N,
+			TPC(&mat.Matrix_MD[0]),
+			TPC(&mat.column_indices[0]),
+			TPC(&mat.values[0]),
+			TPC(&mat.row_offsets[0]),
+			TPC(&mat.row_sizes[0]));
+}
+
+// template <typename INDEX_TYPE, typename VALUE_TYPE>
+// void UpdateMatrix(	hyb_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &mat,
+// 					cusp::array1d<INDEX_TYPE, cusp::device_memory> &rows,
+// 					cusp::array1d<INDEX_TYPE, cusp::device_memory> &cols,
+// 					const int N)
+// {
+// 	mat_info<INDEX_TYPE> infoMat;
+// 	get_matrix_info(mat, infoMat);
+
+// #if(DEBUG)
+// 	assert(src.num_rows == infoDst.num_rows);
+// 	assert(src.num_cols == infoDst.num_cols);
+// #endif
+
+// 	const size_t NUM_BLOCKS = BLOCKS;
+// 	const size_t BLOCK_SIZE = BLOCK_THREADS;
+
+// 	UpdateMatrix_hyb_B<INDEX_TYPE, VALUE_TYPE> <<<NUM_BLOCKS, BLOCK_SIZE>>> (
+// 			infoMat.num_rows,
+// 			infoMat.num_cols,
+// 			infoMat.num_cols_per_row,
+// 			infoMat.pitch,
+// 			TPC(&rows[0]),
+// 			TPC(&cols[0]),
+// 			N,
+// 			TPC(&mat.row_sizes[0]),
+// 			TPC(&mat.matrix.ell.column_indices.values[0]),
+// 			TPC(&mat.matrix.coo.row_indices[0]),
+// 			TPC(&mat.matrix.coo.column_indices[0]));
+// }
+
+template <typename INDEX_TYPE, typename VALUE_TYPE>
+void UpdateMatrix(	hyb_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &mat,
+					cusp::array1d<INDEX_TYPE, cusp::device_memory> &rows,
+					cusp::array1d<INDEX_TYPE, cusp::device_memory> &cols,
+					cusp::array1d<VALUE_TYPE, cusp::device_memory> &vals,
+					const int N)
+{
+	mat_info<INDEX_TYPE> infoMat;
+	get_matrix_info(mat, infoMat);
+
+#if(DEBUG)
+	assert(src.num_rows == infoDst.num_rows);
+	assert(src.num_cols == infoDst.num_cols);
+#endif
+
+	const size_t NUM_BLOCKS = BLOCKS;
+	const size_t BLOCK_SIZE = BLOCK_THREADS;
+
+	#define STEP_SIZE		4096
+	for(int i=0; i<N; i+=STEP_SIZE)
+	{
+
+		//fprintf(stderr, "range: %d to %d\n", i, min(i+STEP_SIZE, N));
+
+		UpdateMatrix_hyb<INDEX_TYPE, VALUE_TYPE> <<<NUM_BLOCKS, BLOCK_SIZE>>> (
+				infoMat.num_rows,
+				infoMat.num_cols,
+				infoMat.num_cols_per_row,
+				infoMat.pitch,
+				TPC(&rows[0]),
+				TPC(&cols[0]),
+				TPC(&vals[0]),
+				i,
+				min(i+STEP_SIZE, N),
+				TPC(&mat.row_sizes[0]),
+				TPC(&mat.matrix.ell.column_indices.values[0]),
+				TPC(&mat.matrix.ell.values.values[0]),
+				TPC(&mat.matrix.coo.row_indices[0]),
+				TPC(&mat.matrix.coo.column_indices[0]),
+				TPC(&mat.matrix.coo.values[0]));
+
+		mat.num_overflow = mat.row_sizes[mat.num_rows];
+		mat.row_sizes[mat.num_rows+1] = mat.num_overflow;
+		//fprintf(stderr, "num_overflow: %d\n", mat.num_overflow);
+
+		thrust::sort_by_key(mat.matrix.coo.row_indices.begin(), mat.matrix.coo.row_indices.begin()+mat.num_overflow,
+							thrust::make_zip_iterator(thrust::make_tuple(mat.matrix.coo.column_indices.begin(), mat.matrix.coo.values.begin())) );
+	}
+
+	mat.matrix.num_entries = N;
+	mat.matrix.ell.num_entries = N - mat.num_overflow;
+	mat.matrix.coo.num_entries = mat.num_overflow;
+}
+
+template <typename INDEX_TYPE, typename VALUE_TYPE>
+void SortMatrix(	dcsr_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &mat)
+{
+	mat_info<INDEX_TYPE> infoMat;
+	get_matrix_info(mat, infoMat);
+
+	const size_t BLOCK_SIZE = 128;
+	const size_t THREADS_PER_VECTOR_A = 4;
+	const size_t VECTORS_PER_BLOCK_A = BLOCK_SIZE / THREADS_PER_VECTOR_A;
+
+	const size_t MAX_BLOCKS_A = cusp::detail::device::arch::max_active_blocks(SetRowIndices<INDEX_TYPE, VALUE_TYPE, VECTORS_PER_BLOCK_A, THREADS_PER_VECTOR_A>, BLOCK_SIZE, (size_t) 0);
+	const size_t NUM_BLOCKS_A = std::min<size_t>(MAX_BLOCKS_A, ROUND_UP(mat.num_rows, VECTORS_PER_BLOCK_A));
+
+	//set row indices
+	SetRowIndices<INDEX_TYPE, VALUE_TYPE, VECTORS_PER_BLOCK_A, THREADS_PER_VECTOR_A> <<<NUM_BLOCKS_A, BLOCK_SIZE>>> (
+			infoMat.num_rows,
+			TPC(&mat.row_indices[0]),
+			TPC(&mat.row_offsets[0]),
+			TPC(&mat.row_sizes[0]));
+
+	//sort by rows
+	INDEX_TYPE mem_pos = mat.Matrix_MD[0];
+	thrust::sort_by_key(mat.row_indices.begin(), mat.row_indices.begin()+mem_pos,
+						thrust::make_zip_iterator(thrust::make_tuple(mat.column_indices.begin(), mat.values.begin())) );
+
+	//perform scan on row sizes to determine new indices
+	cusp::array1d<INDEX_TYPE, cusp::device_memory> temp_offsets(mat.num_rows);
+	thrust::exclusive_scan(mat.row_sizes.begin(), mat.row_sizes.end(), temp_offsets.begin());
+
+	const size_t MAX_BLOCKS_B = cusp::detail::device::arch::max_active_blocks(SetRowOffsets<INDEX_TYPE, VALUE_TYPE>, BLOCK_SIZE, (size_t) 0);
+	const size_t NUM_BLOCKS_B = std::min<size_t>(MAX_BLOCKS_B, ROUND_UP(mat.num_rows, BLOCK_SIZE));
+
+	//set new row offset values
+	SetRowOffsets<INDEX_TYPE, VALUE_TYPE> <<<NUM_BLOCKS_B, BLOCK_SIZE>>> (
+			infoMat.num_rows,
+			TPC(&mat.Matrix_MD[0]),
+			TPC(&mat.row_indices[0]),
+			TPC(&mat.row_offsets[0]),
+			TPC(&mat.row_sizes[0]),
+			TPC(&temp_offsets[0]));
+}
+
+} //namespace device
+
+#endif

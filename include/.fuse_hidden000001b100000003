@@ -1,0 +1,390 @@
+// __global__ void f_call_device(const int s, const int j);
+// __global__ void f_list_device(const int s, const int j);
+// __global__ void f_set_device(const int s);
+// __global__ void f_if_device(const int s);
+// __global__ void f_primBool_device(const int s);
+// __global__ void f_primNum_device(const int s);
+// __global__ void f_primVoid_device(const int s);
+
+// template <typename INDEX_TYPE>
+// __launch_bounds__(BLOCK_SIZE,1)
+// __global__ void AND_OP(	const INDEX_TYPE *A,
+// 						const INDEX_TYPE *B,
+// 						INDEX_TYPE *C,
+// 						const INDEX_TYPE size)
+// {
+// 	const int tID = blockIdx.x*blockDim.x + threadIdx.x;
+// 	const int grid_size = blockDim.x*gridDim.x;
+
+// 	for(int i=tID; i<size; i+=grid_size)
+// 		C[i] = A[i] & B[i];
+// }
+
+// template <typename INDEX_TYPE>
+// __launch_bounds__(BLOCK_SIZE,1)
+// __global__ void AccumVec(	INDEX_TYPE *a,
+// 							const INDEX_TYPE *b,
+// 							const int size)
+// {
+// 	const int tID = blockIdx.x*blockDim.x + threadIdx.x;
+// 	const int grid_size = blockDim.x*gridDim.x;
+
+// 	//a += b
+// 	for(int i=tID; i<size; i+=grid_size)
+// 		a[i] += b[i];
+// }
+
+// template <typename INDEX_TYPE, typename MEM_TYPE>
+// __launch_bounds__(BLOCK_SIZE,1)
+// __global__ void OuterProduct(	const INDEX_TYPE *a,
+// 								const INDEX_TYPE *b,
+// 								const int size_a,
+// 								const int size_b,
+// 								cusp::ell_matrix<int, int, cusp::device_memory> &mat)
+// {
+// 	const int tID = blockIdx.x*blockDim.x + threadIdx.x;
+// 	const int grid_size = blockDim.x*gridDim.x;
+	
+// 	__shared__ int num_entries_b = 0;
+// 	__shared__ int entries_b[BLOCK_SIZE];
+
+// 	if(tID < BLOCK_SIZE)
+// 		entries_b[tID] = -1;
+// 	__syncthreads();
+
+// 	if(tID == 0)
+// 	{
+// 		for(int i=blockIdx.x*blockDim.x; i < (blockIdx.x + 1) * cusp::detail::round_up(size_b, gridDim.x) && i < size_b; ++i)
+// 		{
+// 			if(b[i])
+// 			{
+// 				entries_b[num_entries_b] = i;
+// 				num_entries_b++;
+// 			}
+// 		}
+// 	}
+// 	__syncthreads();
+
+// 	for(int i=0; i<size_a; ++i)
+// 	{
+// 		if(a[i])
+// 		{
+// 			column_indices[tID] = entries_b[tID];
+// 		}
+// 	}
+// 	__syncthreads();
+// }
+
+// template <typename INDEX_TYPE, typename MEM_TYPE>
+// __launch_bounds__(BLOCK_SIZE,1)
+// __global__ void ell_add(	const cusp::ell_matrix<int, int, cusp::device_memory> &A,
+// 							const cusp::ell_matrix<int, int, cusp::device_memory> &B,
+// 							cusp::ell_matrix<int, int, cusp::device_memory> &C)
+// {
+// 	const int tID = blockIdx.x*blockDim.x + threadIdx.x;
+// 	const int grid_size = blockDim.x*gridDim.x;
+
+// 	for(int row=tID; row<C.num_rows; row+=grid_size)
+// 	{
+// 		int a_index = 0;
+// 		int b_index = 0;
+// 		for(int col=0; col<C.entries_per_row)
+// 		{
+// 			if(A.column_indices(row,a_index) < b.column_indices)
+// 		}	
+// 	}
+// }
+// //*********************************************************************//
+// //Device forms
+
+// //F_call
+// template <INDEX_TYPE, MEM_TYPE>
+// void CFA<INDEX_TYPE, MEM_TYPE>::f_call_device(const int s, const int j)
+// {
+// 	dim3 GRID(1, 1, 1);
+// 	dim3 BLOCK(BLOCK_SIZE, 1, 1);
+
+// 	// //vf = s[i]
+// 	temp_vec.resize(Fun.num_rows);
+// 	cusp::multiply(Fun, s, temp_vec);
+// 	cusp::multiply(sigma_prime, temp_vec, vf);
+
+// 	temp_vec.resize(Arg[0].num_rows);
+// 	for(int i=0; i<m_maxCall; ++i)
+// 	{
+// 		cusp::multiply(Arg[i], s, temp_vec);
+// 		cusp::multiply(sigma_prime, temp_vec, v[i]);
+// 	}
+
+// 	temp_vec.resize(Var[0].num_rows);
+// 	for(int i=0; i<m_maxCall; ++i)
+// 	{
+// 		cusp::multiply(Var[i], vf, a[i]);
+// 	}
+
+// 	temp_Mat[0] = sigma_prime;
+// 	for(int i=0; i<j; ++i)
+// 	{
+// 		OuterProduct(v[i], a[i], temp_Mat[2]);
+// 		if(i%2 == 0)
+// 			add_ell(temp_Mat[0], temp_Mat[2], temp_Mat[1]);
+// 		else
+// 			add_ell(temp_Mat[1], temp_Mat[2], temp_Mat[0]);
+// 	}
+// 	sigma_prime = (j%2 == 1) ? temp_Mat[1] : temp_Mat[0];
+
+// 	//r_prime
+// 	temp_vec.resize(Body.num_rows);
+// 	cusp::multiply(Body, vf, temp_vec);
+// 	CFA::AccumVec(r_prime, temp_vec);
+// }
+
+// //f_call
+// template <>
+// void CFA<int, cusp::device_memory>::f_call()
+// {
+// 	for(int j=1; j<=m_maxCall; ++j)
+// 	{
+// 		thrust::fill(search_vec.begin(), search_vec.end(), 0);
+// 		AND_OP<<<GRID, BLOCK>>>(r, Call[j], search_vec, search_vec.size());
+// 		cusp::array1d<int, cusp::host_memory> temp = search_vec;
+
+// 		for(int i=0; i<search_vec.size(); ++i)
+// 		{
+// 			f_call_device(search_vec[i], j);
+// 		}
+// 	}
+// }
+
+// // //F_list
+// // __global__ void f_list(const cusp::array1d<INDEX_TYPE, cusp::device_memory> &s, const int j)
+// // {
+// // 	//vf = s[i]
+// // 	temp_vec.resize(Fun.num_rows);
+// // 	cusp::multiply(Fun, s, temp_vec);
+// // 	cusp::multiply(sigma_prime, temp_vec, vf);
+// // 	cusp::multiply(Var[0], vf, a_var);
+
+// // 	temp_vec.resize(Arg[0].num_rows);
+// // 	thrust::fill(v_list.begin(), v_list.end(), 0);
+// // 	for(int i=0; i<j; ++i)
+// // 	{
+// // 		cusp::multiply(Arg[i], s, temp_vec);
+// // 		cusp::multiply(sigma_prime, temp_vec, v[i]);
+// // 		CFA::AccumVec(v_list, v[i]);
+// // 	}
+// // 	CFA::AccumVec(v_list, LIST_vec);
+// // 	OuterProduct(v_list, a_var, temp_Mat[0]);
+// // 	cusp::add(temp_Mat[0], sigma_prime, temp_Mat[1]);
+// // 	sigma_prime = temp_Mat[1];
+
+// // 	//r_prime
+// // 	temp_vec.resize(Body.num_rows);
+// // 	cusp::multiply(Body, vf, temp_vec);
+// // 	CFA::AccumVec(r_prime, temp_vec);
+// // }
+
+// // //entry point
+// // template <>
+// // void CFA<int, cusp::device_memory>::f_list()
+// // {
+// // 	std::vector<int> search_vec;
+// // 	for(int j=0; j<=m_maxList; ++j)
+// // 	{
+// // 		AND_OP(r, PrimList[j], search_vec);
+// // 		fprintf(stdout, "f_list_%d: %d\n", j, search_vec.size());
+
+// // 		for(int i=0; i<search_vec.size(); ++i)
+// // 		{
+// // 			thrust::fill(s.begin(), s.end(), 0);
+// // 			s[search_vec[i]] = 1;
+// // 			f_list_host(s, j);
+// // 		}
+// // 	}
+// // }
+
+// // //F_set
+// // __global__ void f_set_device(const int s)
+// // {
+// // 	temp_vec.resize(Fun.num_rows);
+// // 	cusp::multiply(Fun, s, temp_vec);
+// // 	cusp::multiply(sigma_prime, temp_vec, vf);
+// // 	cusp::multiply(Var[0], vf, a_var);
+// // 	cusp::multiply(Arg[0], s, a_set);
+// // 	temp_vec.resize(Arg[1].num_rows);
+// // 	cusp::multiply(Arg[1], s, temp_vec);
+// // 	cusp::multiply(sigma_prime, temp_vec, v_set);
+
+// // 	//sigma + (a_var (X) void) + (a_set (X) v_set)
+// // 	cusp::add(CFA::OuterProduct(VOID_vec, a_var, temp_Mat[0]), CFA::OuterProduct(v_set, a_set, temp_Mat[1]), temp_Mat[2]);
+// // 	cusp::add(temp_Mat[2], sigma_prime, temp_Mat[3]);
+// // 	sigma_prime = temp_Mat[3];
+
+// // 	//r_prime
+// // 	temp_vec.resize(Body.num_rows);
+// // 	cusp::multiply(Body, vf, temp_vec);
+// // 	CFA::AccumVec(r_prime, temp_vec);
+// // }
+
+// // //entry point
+// // template <>
+// // void CFA<int, cusp::device_memory>::f_set()
+// // {
+// // 	std::vector<int> search_vec;
+// // 	AND_OP(r, SET, search_vec);
+// // 	fprintf(stdout, "f_set: %d\n", search_vec.size());
+// // 	for(int i=0; i<search_vec.size(); ++i)
+// // 	{
+// // 		thrust::fill(s.begin(), s.end(), 0);
+// // 		s[search_vec[i]] = 1;
+// // 		f_set_host(s);
+// // 	}
+// // }
+
+// // //F_if
+// // __global__ void f_if(const cusp::array1d<INDEX_TYPE, cusp::device_memory> &s)
+// // {
+// // 	temp_vec.resize(Arg[0].num_rows);
+// // 	cusp::multiply(Arg[0], s, temp_vec);
+// // 	cusp::multiply(sigma_prime, temp_vec, v_cond);
+
+// // 	int tb = thrust::inner_product(v_cond.begin(), v_cond.end(), NOT_FALSE_vec.begin(), 0);
+// // 	int fb = thrust::inner_product(v_cond.begin(), v_cond.end(), FALSE_vec.begin(), 0);
+
+// // 	//fprintf(stderr, "tb: %d  fb: %d\n", tb, fb);
+// // 	temp_vec.resize(CondTrue.num_rows);
+// // 	if(tb && fb)
+// // 	{
+// // 		cusp::multiply(CondTrue, s, temp_vec);
+// // 		CFA::AccumVec(r_prime, temp_vec);
+// // 		cusp::multiply(CondFalse, s, temp_vec);
+// // 		CFA::AccumVec(r_prime, temp_vec);
+// // 	}
+// // 	else if(tb)
+// // 	{
+// // 		cusp::multiply(CondTrue, s, temp_vec);
+// // 		CFA::AccumVec(r_prime, temp_vec);
+// // 	}
+// // 	else if(fb)
+// // 	{
+// // 		cusp::multiply(CondFalse, s, temp_vec);
+// // 		CFA::AccumVec(r_prime, temp_vec);
+// // 	}
+// // }
+
+// // //entry point
+// // template <>
+// // void CFA<int, cusp::device_memory>::f_if()
+// // {
+// // 	std::vector<int> search_vec;
+// // 	AND_OP(r, IF, search_vec);
+// // 	fprintf(stdout, "f_if: %d\n", search_vec.size());
+// // 	for(int i=0; i<search_vec.size(); ++i)
+// // 	{
+// // 		thrust::fill(s.begin(), s.end(), 0);
+// // 		s[search_vec[i]] = 1;
+// // 		f_if_host(s);
+// // 	}
+// // }
+
+// // //F_primNum
+// // __global__ void f_primNum(const cusp::array1d<INDEX_TYPE, cusp::device_memory> &s)
+// // {
+// // 	temp_vec.resize(Fun.num_rows);
+// // 	cusp::multiply(Fun, s, temp_vec);
+// // 	cusp::multiply(sigma_prime, temp_vec, vf);
+// // 	cusp::multiply(Var[0], vf, a_var);
+
+// // 	//sigma + (a_var (X) NUM)
+// // 	OuterProduct(NUM_vec, a_var, temp_Mat[0]);
+// // 	cusp::add(temp_Mat[0], sigma_prime, temp_Mat[1]);
+// // 	sigma_prime = temp_Mat[1];
+
+// // 	//r_prime
+// // 	temp_vec.resize(Body.num_rows);
+// // 	cusp::multiply(Body, vf, temp_vec);
+// // 	CFA::AccumVec(r_prime, temp_vec);
+// // }
+
+// // //entry point
+// // template <>
+// // void CFA<int, cusp::device_memory>::f_primNum()
+// // {
+// // 	std::vector<int> search_vec;
+// // 	AND_OP(r, PrimNum, search_vec);
+// // 	fprintf(stdout, "f_primNum: %d\n", search_vec.size());
+// // 	for(int i=0; i<search_vec.size(); ++i)
+// // 	{
+// // 		thrust::fill(s.begin(), s.end(), 0);
+// // 		s[search_vec[i]] = 1;
+// // 		f_primNum_host(s);
+// // 	}
+// // }
+
+// // //F_primBool
+// // __global__ void f_primBool(const cusp::array1d<INDEX_TYPE, cusp::device_memory> &s)
+// // {
+// // 	temp_vec.resize(Fun.num_rows);
+// // 	cusp::multiply(Fun, s, temp_vec);
+// // 	cusp::multiply(sigma_prime, temp_vec, vf);
+// // 	cusp::multiply(Var[0], vf, a_var);
+
+// // 	//sigma + (a_var (X) #T#F)
+// // 	OuterProduct(BOOL_vec, a_var, temp_Mat[0]);
+// // 	cusp::add(temp_Mat[0], sigma_prime, temp_Mat[1]);
+// // 	sigma_prime = temp_Mat[1];
+
+// // 	//r_prime
+// // 	temp_vec.resize(Body.num_rows);
+// // 	cusp::multiply(Body, vf, temp_vec);
+// // 	CFA::AccumVec(r_prime, temp_vec);
+// // }
+
+// // //entry point
+// // template <>
+// // void CFA<int, cusp::device_memory>::f_primBool()
+// // {
+// // 	std::vector<int> search_vec;
+// // 	AND_OP(r, PrimBool, search_vec);
+// // 	fprintf(stdout, "f_primBool: %d\n", search_vec.size());
+// // 	for(int i=0; i<search_vec.size(); ++i)
+// // 	{
+// // 		thrust::fill(s.begin(), s.end(), 0);
+// // 		s[search_vec[i]] = 1;
+// // 		f_primBool_host(s);
+// // 	}
+// // }
+
+// // //F_primVoid
+// // __global__ void f_primVoid(const INDEX_TYPE s)
+// // {
+// // 	temp_vec.resize(Fun.num_rows);
+// // 	row_select(Fun, s, temp_vec);
+// // 	cusp::multiply(sigma_prime, temp_vec, vf);
+// // 	cusp::multiply(Var[0], vf, a_var);
+
+// // 	//sigma + (a_var (X) VOID)
+// // 	OuterProduct(VOID_vec, a_var, temp_Mat[0]);
+// // 	cusp::add(temp_Mat[0], sigma_prime, temp_Mat[1]);
+// // 	sigma_prime = temp_Mat[1];
+
+// // 	//r_prime
+// // 	temp_vec.resize(Body.num_rows);
+// // 	cusp::multiply(Body, vf, temp_vec);
+// // 	CFA::AccumVec(r_prime, temp_vec);
+// // }
+
+// // //entry point
+// // template <>
+// // void CFA<int, cusp::device_memory>::f_primVoid()
+// // {
+// // 	std::vector<int> search_vec;
+// // 	AND_OP(r, PrimVoid, search_vec);
+// // 	fprintf(stdout, "f_PrimVoid: %d\n", search_vec.size());
+// // 	for(int i=0; i<search_vec.size(); ++i)
+// // 	{
+// // 		thrust::fill(s.begin(), s.end(), 0);
+// // 		s[search_vec[i]] = 1;
+// // 		f_primVoid_host(s);
+// // 	}
+// // }

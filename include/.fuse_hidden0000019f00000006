@@ -1,0 +1,130 @@
+#ifndef CFA_H
+#define CFA_H
+
+#include <cstdlib>
+#include <cstdio>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <cassert>
+
+// includes CUDA
+#include <cuda.h>
+#include <cublas_v2.h>
+#include <cuda_runtime.h>
+#include <cuda_runtime_api.h>
+#include <helper_cuda.h>
+
+//openmp
+#include <omp.h>
+
+//sparse matrix
+#include "sparse.h"
+#include "matrix_types.h"
+
+//cusp
+#include <cusp/coo_matrix.h>
+#include <cusp/io/matrix_market.h>
+#include <cusp/multiply.h>
+#include <cusp/elementwise.h>
+#include <cusp/transpose.h>
+#include <cusp/blas.h>
+#include <cusp/print.h>
+
+#define NUM_THREADS     8
+#define ARG_MAX         32
+
+// General GPU Device CUDA Initialization
+int gpuDeviceInit(int devID);
+
+template <typename MEM_TYPE>
+class CFA
+{
+private:
+    int m_numThreads;
+    int gpuDeviceInit(int devID);
+
+    int m_numCallSites;
+    int m_maxArgs;
+    int m_ValuesSize;
+
+    cusp::coo_matrix<int,int,MEM_TYPE> r;
+    cusp::coo_matrix<int,int,MEM_TYPE> sigma;
+    cusp::coo_matrix<int,int,MEM_TYPE> r_prime;
+    cusp::coo_matrix<int,int,MEM_TYPE> sigma_prime;
+    cusp::coo_matrix<int,int,MEM_TYPE> CondTrue;
+    cusp::coo_matrix<int,int,MEM_TYPE> CondFalse;
+    cusp::coo_matrix<int,int,MEM_TYPE> Tick;
+    cusp::coo_matrix<int,int,MEM_TYPE> Body;
+    cusp::coo_matrix<int,int,MEM_TYPE> Fun;
+
+    cusp::coo_matrix<int,int,MEM_TYPE> Arg[ARG_MAX];
+    cusp::coo_matrix<int,int,MEM_TYPE> Var[ARG_MAX];
+    cusp::coo_matrix<int,int,MEM_TYPE> Call[ARG_MAX];
+    cusp::coo_matrix<int,int,MEM_TYPE> IF;
+    cusp::coo_matrix<int,int,MEM_TYPE> SET;
+
+    cusp::coo_matrix<int,int,MEM_TYPE> temp_Mat[8];
+    cusp::coo_matrix<int,int,MEM_TYPE> a[ARG_MAX];
+    cusp::coo_matrix<int,int,MEM_TYPE> a_var;
+    cusp::coo_matrix<int,int,MEM_TYPE> a_set;
+    cusp::coo_matrix<int,int,MEM_TYPE> v[ARG_MAX];
+    cusp::coo_matrix<int,int,MEM_TYPE> vf;
+    cusp::coo_matrix<int,int,MEM_TYPE> v_set;
+    cusp::coo_matrix<int,int,MEM_TYPE> v_cond;
+    cusp::coo_matrix<int,int,MEM_TYPE> PrimInt;
+    cusp::coo_matrix<int,int,MEM_TYPE> PrimBool;
+    cusp::coo_matrix<int,int,MEM_TYPE> PrimVoid;
+    cusp::coo_matrix<int,int,MEM_TYPE> VOID_vec;
+    cusp::coo_matrix<int,int,MEM_TYPE> NOT_FALSE_vec;
+    cusp::coo_matrix<int,int,MEM_TYPE> FALSE_vec;
+    cusp::coo_matrix<int,int,MEM_TYPE> NUM_vec;
+    cusp::coo_matrix<int,int,MEM_TYPE> BOOL_vec;    
+
+    cusp::coo_matrix<int,int,MEM_TYPE> tb;
+    cusp::coo_matrix<int,int,MEM_TYPE> fb;
+
+    void f_call(const cusp::coo_matrix<int,int,MEM_TYPE> &s, const int j);
+    void f_set(const cusp::coo_matrix<int,int,MEM_TYPE> &s);
+    void f_if(const cusp::coo_matrix<int,int,MEM_TYPE> &s);
+    void f_primBool(const cusp::coo_matrix<int,int,MEM_TYPE> &s);
+    void f_primNum(const cusp::coo_matrix<int,int,MEM_TYPE> &s);
+    void f_primVoid(const cusp::coo_matrix<int,int,MEM_TYPE> &s);
+
+    void AND_OP(    const cusp::coo_matrix<int,int,MEM_TYPE> &A, 
+                    const cusp::coo_matrix<int,int,MEM_TYPE> &B,
+                    cusp::coo_matrix<int,int,MEM_TYPE> &C);
+
+public:
+    CFA() : m_maxArgs(0) {};
+    CFA(char *filename) : m_maxArgs(0)
+    {   
+        ReadTestFile(filename);
+        m_numThreads = NUM_THREADS;
+        Init();
+    };
+    ~CFA() {};
+
+    //setup and runtime functions
+    void ReadTestFile(const char* filename);
+    void Init();
+    void Run_Analysis();
+    void WriteStore();
+
+    //GPU calls
+    void GPU_Init();
+    void GPU_UnionStore();
+
+    //CPU calls
+    void CPU_Init();
+    void CPU_UnionStore();
+
+    void Vectorize(cusp::coo_matrix<int,int,MEM_TYPE> &A, cusp::coo_matrix<int,int,MEM_TYPE> &B);
+    void UnionStore();
+
+    //Debug functions
+};
+
+#endif

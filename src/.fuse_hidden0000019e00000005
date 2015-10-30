@@ -1,0 +1,618 @@
+#include "CFA.cuh"
+#include "CFA.h"
+
+#define DEBUG	1
+
+#if(DEBUG == 1)
+#define MULTIPLY(A, B, C)		cusp::multiply(A, B, C);\ 
+								fprintf(stderr, "(%d,%d) x (%d,%d) -> (%d,%d)\n", A.num_rows, A.num_cols, B.num_rows, B.num_cols, C.num_rows, C.num_cols)
+#else
+#define MULTIPLY(A, B, C)		cusp::multiply(A, B, C)
+#endif
+
+// General GPU Device CUDA Initialization
+int CFA::gpuDeviceInit(int devID)
+{
+    int deviceCount;
+    checkCudaErrors(cudaGetDeviceCount(&deviceCount));
+
+    if (deviceCount == 0)
+    {
+        fprintf(stderr, "gpuDeviceInit() CUDA error: no devices supporting CUDA.\n");
+        exit(-1);
+    }
+
+    if (devID < 0)
+       devID = 0;
+        
+    if (devID > deviceCount-1)
+    {
+        fprintf(stderr, "\n");
+        fprintf(stderr, ">> %d CUDA capable GPU device(s) detected. <<\n", deviceCount);
+        fprintf(stderr, ">> gpuDeviceInit (-device=%d) is not a valid GPU device. <<\n", devID);
+        fprintf(stderr, "\n");
+        return -devID;
+    }
+
+    cudaDeviceProp deviceProp;
+    checkCudaErrors( cudaGetDeviceProperties(&deviceProp, devID) );
+
+    if (deviceProp.major < 1)
+    {
+        fprintf(stderr, "gpuDeviceInit(): GPU device does not support CUDA.\n");
+        exit(-1);
+    }
+    
+    checkCudaErrors( cudaSetDevice(devID) );
+    printf("gpuDeviceInit() CUDA Device [%d]: \"%s\n", devID, deviceProp.name);
+
+    return devID;
+}
+
+void CFA::UnionStore()
+{
+
+}
+
+void CFA::AND_OP(	const cusp::coo_matrix<int,int,MEM_TYPE> &A, 
+					const cusp::coo_matrix<int,int,MEM_TYPE> &B, 
+					cusp::coo_matrix<int,int,MEM_TYPE> &C)
+{
+	assert(A.num_rows == B.num_rows && A.num_cols == B.num_cols);
+	//cusp::print(A);
+	//cusp::print(B);
+
+	int a = 0, b = 0, i = 0 ;
+	C.resize(A.num_rows, A.num_cols, A.num_entries);
+
+	while(a < A.num_entries && b < B.num_entries)
+	{
+		while(B.row_indices[b] < A.row_indices[a] && b < B.num_entries)
+		{
+			b++;
+		}
+		if(b >= B.num_entries)
+			break;
+		while(B.column_indices[b] < A.column_indices[a] && b < B.num_entries)
+		{
+			b++;
+		}
+		if(b >= B.num_entries)
+			break;
+
+		if(B.row_indices[b] == A.row_indices[a] && B.column_indices[b] == A.column_indices[a])
+		{
+			C.row_indices[i] = B.row_indices[b];
+			C.column_indices[i] = B.column_indices[b];
+			C.values[i] = 1;
+			i++;
+		}
+		
+		a++;
+	}
+
+	C.resize(A.num_rows, A.num_cols, i);
+}
+
+void CFA::GPU_Init()
+{
+	// for(int i=0; i<m_numThreads; ++i)
+	// {
+	// 	gpuDeviceInit(i);
+	// }
+
+}
+
+void CFA::CPU_Init()
+{
+
+}
+
+void CFA::Init()
+{
+	VOID_vec.resize(1, sigma.num_cols, 1);
+	NOT_FALSE_vec.resize(1, sigma.num_cols, sigma.num_cols - 1);
+	FALSE_vec.resize(1, sigma.num_cols, 1);
+	BOOL_vec.resize(1, sigma.num_cols, 2);
+	NUM_vec.resize(1, sigma.num_cols, 1);
+
+	int nfvc=0, max = sigma.num_cols;
+	for(int i=0; i<max; ++i)
+	{
+		if(i != max - 2)			//Everything that is not false (#f)
+		{
+			NOT_FALSE_vec.row_indices[nfvc] = 0;
+			NOT_FALSE_vec.column_indices[nfvc] = i;
+			NOT_FALSE_vec.values[nfvc] = 1;
+			nfvc++;
+		}
+
+		if(i == max - 4)			//void
+		{
+			VOID_vec.row_indices[0] = 0;
+			VOID_vec.column_indices[0] = i;
+			VOID_vec.values[0] = 1;
+		}
+		else if(i == max - 3)		//#t
+		{
+			BOOL_vec.row_indices[0] = 0;
+			BOOL_vec.column_indices[0] = i;
+			BOOL_vec.values[0] = 1;
+		}
+		else if(i == max - 2)		//#f
+		{
+			BOOL_vec.row_indices[1] = 0;
+			BOOL_vec.column_indices[1] = i;
+			BOOL_vec.values[1] = 1;
+
+			FALSE_vec.row_indices[0] = 0;
+			FALSE_vec.column_indices[0] = i;
+			FALSE_vec.values[0] = 1;
+		}
+		else if(i == max - 1)		//NUM
+		{
+			NUM_vec.row_indices[0] = 0;
+			NUM_vec.column_indices[0] = i;
+			NUM_vec.values[0] = 1;
+		}
+	}
+	
+	tb.resize(1,1,1);
+	fb.resize(1,1,1);
+
+	m_ValuesSize = sigma.num_rows;
+}
+
+void CFA::f_call(const cusp::coo_matrix<int,int,MEM_TYPE> &s, const int j)
+{
+	fprintf(stderr, "s:\n");
+	cusp::print(s);
+
+	//vf = s[i]
+	cusp::multiply(s, Fun, temp_Mat[0]);
+	cusp::print(temp_Mat[0]);
+	cusp::multiply(temp_Mat[0], sigma_prime, vf);
+	fprintf(stderr, "vf:\n");
+	cusp::print(vf);
+
+	for(int i=0; i<m_maxArgs; ++i)
+	{
+		cusp::multiply(s, Arg[i], temp_Mat[0]);
+		cusp::multiply(temp_Mat[0], sigma_prime, v[i]);
+		fprintf(stderr, "v[%d]\n", i);
+		cusp::print(v[i]);
+	}
+
+	cusp::multiply(s, Tick, temp_Mat[7]);
+	for(int i=0; i<m_maxArgs; ++i)
+	{
+		cusp::multiply(vf, Var[i], temp_Mat[0]);
+		cusp::print(temp_Mat[0]);
+		cusp::transpose(temp_Mat[0], temp_Mat[1]);
+		cusp::multiply(temp_Mat[1], temp_Mat[7], temp_Mat[2]);
+		Vectorize(temp_Mat[2], a[i]);
+		fprintf(stderr, "a[%d]\n", i);
+		cusp::print(a[i]);
+	}
+
+	fprintf(stderr, "sigma_prime:\n");
+	temp_Mat[0] = sigma_prime;
+	for(int i=0; i<j; ++i)
+	{
+		cusp::transpose(a[i], temp_Mat[3]);
+		cusp::multiply(temp_Mat[3], v[i], temp_Mat[2]);
+		temp_Mat[2].resize(m_ValuesSize, temp_Mat[2].num_cols, temp_Mat[2].num_entries);
+		if(i%2 == 0)
+			cusp::add(temp_Mat[0], temp_Mat[2], temp_Mat[1]);
+		else
+			cusp::add(temp_Mat[1], temp_Mat[2], temp_Mat[0]);
+	}
+	sigma_prime = (j%2 == 1) ? temp_Mat[1] : temp_Mat[0];
+
+	fprintf(stderr, "r_prime:\n");
+	MULTIPLY(vf, Body, temp_Mat[0]);
+	cusp::transpose(temp_Mat[0], temp_Mat[1]);
+	MULTIPLY(temp_Mat[1], temp_Mat[7], temp_Mat[2]);
+	Vectorize(temp_Mat[2], temp_Mat[3]);
+	cusp::print(temp_Mat[3]);
+	cusp::add(temp_Mat[3], r_prime, temp_Mat[0]);
+	r_prime = temp_Mat[0];
+}
+
+void CFA::f_set(const cusp::coo_matrix<int,int,MEM_TYPE> &s)
+{
+	cusp::multiply(s, Fun, temp_Mat[0]);
+	cusp::multiply(temp_Mat[0], sigma_prime, vf);
+
+	//s x Tick
+	cusp::multiply(s, Tick, temp_Mat[7]);
+
+	cusp::multiply(vf, Var[0], temp_Mat[0]);
+	cusp::transpose(temp_Mat[0], temp_Mat[1]);
+	cusp::multiply(temp_Mat[1], temp_Mat[7], temp_Mat[2]);
+	Vectorize(temp_Mat[2], a_var);
+	
+	cusp::multiply(s, Arg[0], a_set);
+	cusp::multiply(s, Arg[1], temp_Mat[0]);
+	cusp::multiply(temp_Mat[0], sigma_prime, v_set);
+	fprintf(stderr, "a_set:\n");
+	cusp::print(a_set);
+	fprintf(stderr, "v_set:\n");
+	cusp::print(v_set);
+
+	//sigma + (a_var (X) void) + (a_set (X) v_set)
+	cusp::transpose(a_var, temp_Mat[0]);
+	cusp::multiply(temp_Mat[0], VOID_vec, temp_Mat[1]);
+	cusp::print(temp_Mat[1]);
+	temp_Mat[1].resize(m_ValuesSize, temp_Mat[1].num_cols, temp_Mat[1].num_entries);
+	cusp::transpose(a_set, temp_Mat[0]);
+	cusp::multiply(temp_Mat[0], v_set, temp_Mat[2]);
+	cusp::print(temp_Mat[2]);
+	temp_Mat[2].resize(m_ValuesSize, temp_Mat[2].num_cols, temp_Mat[2].num_entries);
+	cusp::add(temp_Mat[1], sigma_prime, temp_Mat[3]);
+	cusp::add(temp_Mat[2], temp_Mat[3], sigma_prime);
+
+	//r_prime
+	cusp::multiply(vf, Body, temp_Mat[0]);
+	cusp::transpose(temp_Mat[0], temp_Mat[1]);
+	cusp::multiply(temp_Mat[1], temp_Mat[7], temp_Mat[2]);
+	Vectorize(temp_Mat[2], temp_Mat[3]);
+	cusp::add(temp_Mat[3], r_prime, temp_Mat[0]);
+	r_prime = temp_Mat[0];
+}
+
+void CFA::f_if(const cusp::coo_matrix<int,int,MEM_TYPE> &s)
+{
+	cusp::multiply(s, Arg[0], temp_Mat[0]);
+	cusp::multiply(temp_Mat[0], sigma_prime, v_cond);
+
+	cusp::multiply(v_cond, NOT_FALSE_vec, tb);
+	cusp::multiply(v_cond, FALSE_vec, fb);
+
+	if(tb.values[0] == 1 && fb.values[0] == 1)
+	{
+		cusp::multiply(s, CondTrue, temp_Mat[0]);
+		cusp::multiply(s, CondTrue, temp_Mat[1]);
+		cusp::add(temp_Mat[0], r_prime, temp_Mat[2]);
+		cusp::add(temp_Mat[1], temp_Mat[2], r_prime);
+	}
+	else if(tb.values[0] == 1)
+	{	
+		cusp::multiply(s, CondTrue, temp_Mat[0]);
+		cusp::add(r_prime, temp_Mat[0], temp_Mat[1]);
+		r_prime = temp_Mat[1];
+	}
+	else if(fb.values[0] == 1)
+	{
+		cusp::multiply(s, CondFalse, temp_Mat[0]);
+		cusp::add(r_prime, temp_Mat[0], temp_Mat[1]);
+		r_prime = temp_Mat[1];
+	}
+}
+
+void CFA::f_primNum(const cusp::coo_matrix<int,int,MEM_TYPE> &s)
+{
+	cusp::multiply(s, Fun, temp_Mat[0]);
+	cusp::multiply(temp_Mat[0], sigma_prime, vf);
+
+	//s x Tick
+	cusp::multiply(s, Tick, temp_Mat[7]);
+
+	cusp::multiply(vf, Var[0], temp_Mat[0]);
+	cusp::transpose(temp_Mat[0], temp_Mat[1]);
+	cusp::multiply(temp_Mat[1], temp_Mat[7], temp_Mat[2]);
+	Vectorize(temp_Mat[2], a_var);
+
+	//sigma + (a_var (X) NUM)
+	cusp::transpose(a_var, temp_Mat[0]);
+	cusp::multiply(temp_Mat[0], NUM_vec, temp_Mat[1]);
+	temp_Mat[1].resize(m_ValuesSize, temp_Mat[1].num_cols, temp_Mat[1].num_entries);
+	cusp::add(temp_Mat[1], sigma_prime, temp_Mat[3]);
+	sigma_prime = temp_Mat[3];
+
+	//r_prime
+	cusp::multiply(vf, Body, temp_Mat[0]);
+	cusp::transpose(temp_Mat[0], temp_Mat[1]);
+	cusp::multiply(temp_Mat[1], temp_Mat[7], temp_Mat[2]);
+	Vectorize(temp_Mat[2], temp_Mat[3]);
+	cusp::add(temp_Mat[3], r_prime, temp_Mat[0]);
+	r_prime = temp_Mat[0];
+}
+
+void CFA::f_bool(const cusp::coo_matrix<int,int,MEM_TYPE> &s)
+{
+	cusp::multiply(s, Fun, temp_Mat[0]);
+	cusp::multiply(temp_Mat[0], sigma_prime, vf);
+
+	//s x Tick
+	cusp::multiply(s, Tick, temp_Mat[7]);
+
+	cusp::multiply(vf, Var[0], temp_Mat[0]);
+	cusp::transpose(temp_Mat[0], temp_Mat[1]);
+	cusp::multiply(temp_Mat[1], temp_Mat[7], temp_Mat[2]);
+	Vectorize(temp_Mat[2], a_var);
+
+	//sigma + (a_var (X) #T#F)
+	cusp::transpose(a_var, temp_Mat[0]);
+	cusp::multiply(temp_Mat[0], BOOL_vec, temp_Mat[1]);
+	temp_Mat[1].resize(m_ValuesSize, temp_Mat[1].num_cols, temp_Mat[1].num_entries);
+	cusp::add(temp_Mat[1], sigma_prime, temp_Mat[3]);
+	sigma_prime = temp_Mat[3];
+
+	//r_prime
+	cusp::multiply(vf, Body, temp_Mat[0]);
+	cusp::transpose(temp_Mat[0], temp_Mat[1]);
+	cusp::multiply(temp_Mat[1], temp_Mat[7], temp_Mat[2]);
+	Vectorize(temp_Mat[2], temp_Mat[3]);
+	cusp::add(temp_Mat[3], r_prime, temp_Mat[0]);
+	r_prime = temp_Mat[0];
+}
+
+void CFA::f_primVoid(const cusp::coo_matrix<int,int,MEM_TYPE> &s)
+{
+	cusp::multiply(s, Fun, temp_Mat[0]);
+	cusp::multiply(temp_Mat[0], sigma_prime, vf);
+	cusp::print(vf);
+
+	//s x Tick
+	cusp::multiply(s, Tick, temp_Mat[7]);
+
+	cusp::multiply(vf, Var[0], temp_Mat[0]);
+	cusp::transpose(temp_Mat[0], temp_Mat[1]);
+	cusp::multiply(temp_Mat[1], temp_Mat[7], temp_Mat[2]);
+	Vectorize(temp_Mat[2], a_var);
+	cusp::print(a_var);
+
+	//sigma + (a_var (X) VOID)
+	cusp::transpose(a_var, temp_Mat[0]);
+	cusp::multiply(temp_Mat[0], VOID_vec, temp_Mat[1]);
+	temp_Mat[1].resize(m_ValuesSize, temp_Mat[1].num_cols, temp_Mat[1].num_entries);
+	cusp::add(temp_Mat[1], sigma_prime, temp_Mat[3]);
+	sigma_prime = temp_Mat[3];
+
+	//r_prime
+	cusp::multiply(vf, Body, temp_Mat[0]);
+	cusp::print(temp_Mat[0]);
+	cusp::transpose(temp_Mat[0], temp_Mat[1]);
+	cusp::multiply(temp_Mat[1], temp_Mat[7], temp_Mat[2]);
+	Vectorize(temp_Mat[2], temp_Mat[3]);
+	cusp::print(temp_Mat[3]);
+	cusp::add(temp_Mat[3], r_prime, temp_Mat[0]);
+	r_prime = temp_Mat[0];
+	fprintf(stderr, "r_prime:\n");
+	cusp::print(r_prime);
+}
+
+void CFA::Vectorize(cusp::coo_matrix<int,int,MEM_TYPE> &A, 
+					cusp::coo_matrix<int,int,MEM_TYPE> &B)
+{
+	B.resize(1, A.num_rows*A.num_cols, A.num_entries);
+	for(int i=0; i<A.column_indices.size(); ++i)
+	{
+		B.row_indices[i] = 0;
+		B.column_indices[i] = A.row_indices[i]*A.num_cols + A.column_indices[i];
+		B.values[i] = 1;
+	}
+	B.sort_by_row_and_column();
+}
+
+void CFA::ReadTestFile(const char* filename)
+{
+	std::ifstream tf(filename);
+	if(tf.fail())
+	{
+		fprintf(stderr, "Invalid test file: %s\n", filename);
+		exit(1);
+	}
+
+	fprintf(stderr, "Reading test file: %s\n", filename);
+	while(!tf.eof())
+	{
+		int rows, cols, x, y;
+		char buf[64], name[32];
+
+		tf.getline(buf, 64);
+		if(tf.gcount() > 1)
+		{
+			std::sscanf(buf, "%s %d %d", name, &cols, &rows);
+			//std::cout << name << "  " << rows << "  " << cols << std::endl;
+
+			std::vector< std::pair<int, int> > indices;
+			tf.getline(buf, 64);
+			while(tf.gcount() > 1)
+			{
+				std::sscanf(buf, "%d %d", &y, &x);
+				indices.push_back(std::make_pair(x,y));
+				//fprintf(stderr, "gcout: %d %d %d\n", tf.gcount(), x, y);
+				tf.getline(buf, 64);
+			}
+
+			std::sort(indices.begin(), indices.end());
+
+			cusp::coo_matrix<int,int,MEM_TYPE> A(rows, cols, indices.size()), B;
+			for(int i=0; i<indices.size(); ++i)
+			{	
+				A.row_indices[i] = indices[i].first;
+				A.column_indices[i] = indices[i].second;
+				A.values[i] = 1;
+			}
+			A.sort_by_row_and_column();
+
+			fprintf(stderr, "\n%s (%d x %d)\n", name, A.num_rows, A.num_cols);
+			cusp::transpose(A, B);
+			//cusp::print(A);
+
+			std::string mat_name(name), sname = "", snum = "";
+			int mat_num = -1;
+			for(int i=0; i<NUM_MATRIX_TYPES; ++i)
+			{
+				std::string find_name = MatrixTypeMap[i];
+				if(mat_name.find(find_name) == 0)
+				{
+					sname = find_name;
+					snum = mat_name.substr(sname.size());
+					if(snum.size() > 0)
+						mat_num = atoi(snum.c_str()) - 1;
+					break;
+				}
+			}
+
+			//fprintf(stderr, "mat_name: %s \t\t sname: %s\n", mat_name.c_str(), sname.c_str());
+			//parse name
+			if(sname == "r")
+				r = B;
+			else if(sname == "sigma")
+				sigma = A;
+			else if(sname == "CondTrue")
+				CondTrue = A;
+			else if(sname == "CondFalse")
+				CondFalse = A;
+			else if(sname == "Tick")
+				Tick = A;
+			else if(sname == "Body")
+				Body = A;
+			else if(sname == "Fun")
+				Fun = A;
+			else if(sname == "Call")
+				Call[mat_num] = B;
+			else if(sname == "Arg")
+				Arg[mat_num] = A;
+			else if(sname == "Var")
+				Var[mat_num] = A;
+			else if(sname == "PrimBool")
+				PrimBool = B;
+			else if(sname == "PrimInt")
+				PrimInt = B;
+			else if(sname == "PrimVoid")
+				PrimVoid = B;
+			else if(sname == "If")
+				IF = B;
+			else if(sname == "Set")
+				SET = B;
+			else
+				fprintf(stderr, "could not match input matrix: %s\n", name);
+		}
+	}
+
+	tf.close();
+}
+
+void CFA::Run_Analysis()
+{
+	fprintf(stderr, "\n\n\nStarting analysis...\n");
+
+	//kernel calls
+	cusp::coo_matrix<int,int,MEM_TYPE> s(r.num_rows, r.num_cols, r.num_cols);
+	m_maxArgs = 1;
+	
+	bool change = true, sigma_change, r_change;
+	r_prime = r;
+	sigma_prime = sigma;
+	int iter=0;
+
+	do
+	{
+		fprintf(stderr, "\n\nITERATION %d\n\n", ++iter);
+		//f_call
+		fprintf(stderr, "f_call\n");
+	 	for(int j=1; j<=m_maxArgs; ++j)
+		{
+			//r & Call
+			AND_OP(r, Call[j-1], s);
+			f_call(s, j);
+		}
+
+		//f_set
+		fprintf(stderr, "f_set\n");
+		AND_OP(r, SET, s);
+		f_set(s);
+
+		//f_if
+		fprintf(stderr, "f_if\n");
+		AND_OP(r, IF, s);
+		f_if(s);
+
+		//f_bool
+		fprintf(stderr, "f_bool\n");
+		AND_OP(r, PrimBool, s);
+		f_bool(s);
+
+		//f_primNum
+		fprintf(stderr, "f_primNum\n");
+		AND_OP(r, PrimInt, s);
+		f_primNum(s);
+
+		//f_primVoid
+		fprintf(stderr, "f_PrimVoid\n");
+		AND_OP(r, PrimVoid, s);
+		f_primVoid(s);
+
+		//correct values...  (this won't be a problem in later versions)
+		for(int i=0; i<sigma_prime.num_entries; ++i)
+			sigma_prime.values[i] = 1;
+		for(int i=0; i<r_prime.num_entries; ++i)
+			r_prime.values[i] = 1;
+
+		fprintf(stderr, "\n\nupdate sigma\n");
+		cusp::subtract(sigma, sigma_prime, temp_Mat[0]);
+		fprintf(stderr, "***sigma difference***\n");
+		cusp::print(temp_Mat[0]);
+		sigma_change = false;
+		for(int i=0; i<temp_Mat[0].num_entries; ++i)
+			if(temp_Mat[0].values[i] != 0)
+			{
+				sigma_change = true;
+				break;
+			}
+
+		fprintf(stderr, "\n\nupdate r\n");
+		cusp::subtract(r, r_prime, temp_Mat[0]);
+		cusp::print(r);
+		fprintf(stderr, "\n");
+		cusp::print(r_prime);
+		fprintf(stderr, "***r difference***\n");
+		cusp::print(temp_Mat[0]);
+		r_change = false;
+		for(int i=0; i<temp_Mat[0].num_entries; ++i)
+			if(temp_Mat[0].values[i] != 0)
+			{
+				r_change = true;
+				break;
+			}
+
+		r = r_prime;
+		sigma = sigma_prime;
+
+	} while(r_change || sigma_change);
+
+	fprintf(stderr, "Analysis Complete...\nStore:\n");
+	cusp::print(sigma);
+}
+
+void CFA::WriteStore()
+{
+	std::ofstream output("tests/output.dat");
+
+	output << "sigma " << sigma.num_cols << " " << sigma.num_rows << std::endl;
+	for(int i=0; i<sigma.num_entries; ++i)
+		output << sigma.column_indices[i] << " " << sigma.row_indices[i] << std::endl;
+
+	output.close();
+}
+
+void CPU_Test(std::string filename)
+{
+	CFA<cusp::host_memory> Analysis;
+
+	Analysis.ReadTestFile(filename.c_str());
+	Analysis.Init();
+	//Analysis.PrintMatrices();
+
+	Analysis.Run_Analysis();
+	Analysis.WriteStore();
+}
+
+void GPU_Test()
+{
+
+}
