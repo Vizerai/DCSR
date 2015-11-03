@@ -416,7 +416,7 @@ void LoadMatrix( 	dcsr_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory, BINS>
 	double endTime = omp_get_wtime();
 
 	//cudaPrintfDisplay(stdout, true);
-	fprintf(stderr, "DCSR matrix load time:  %f\n", (endTime - startTime));
+	//fprintf(stderr, "DCSR matrix load time:  %f\n", (endTime - startTime));
 
 	device::BinRows(mat);
 }
@@ -485,7 +485,7 @@ void LoadMatrix(	cusp::csr_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &
 	safeSync();
 	double endTime = omp_get_wtime();
 	//cudaPrintfDisplay(stdout, true);
-	fprintf(stderr, "CSR matrix load time:  %f\n", (endTime - startTime));
+	//fprintf(stderr, "CSR matrix load time:  %f\n", (endTime - startTime));
 }
 
 //CSR matrix from CSR

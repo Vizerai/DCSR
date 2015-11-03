@@ -62,7 +62,7 @@ __device__ __forceinline__ void bitonicSort32(T *data, const int tID)
 }
 
 template<typename INDEX_TYPE, typename VALUE_TYPE>
-__device__ __forceinline__ void bitonicSort32_Key(INDEX_TYPE *key, VALUE_TYPE *data, const int tID)
+__device__ __forceinline__ void bitonicSort32_Key(volatile INDEX_TYPE *key, volatile VALUE_TYPE *data, const int tID)//, INDEX_TYPE kvar, VALUE_TYPE dvar)
 {
 	if(tID < 16)
 	{

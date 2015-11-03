@@ -31,7 +31,7 @@
 
 #define RADIX           1
 #define BITONIC         2
-#define SORT            RADIX
+#define SORT            BITONIC
  
 #include <cstdlib>
 #include <cstdio>

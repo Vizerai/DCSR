@@ -38,7 +38,7 @@ struct dcsr_matrix         //dynamic ELL matrix
         SAFE_DELETE(values);
     }
 
-    void resize(const size_t n_rows, const size_t n_cols, const size_t bin_size)
+    void resize(const size_t n_rows, const size_t n_cols, const size_t bin_size, const float factor)
     {
         num_rows = n_rows;
         num_cols = n_cols;
@@ -47,7 +47,7 @@ struct dcsr_matrix         //dynamic ELL matrix
         bin_length = bin_size;
 
         pitch = ALIGN_UP(num_rows*2, 32);
-        mem_size = bin_length * num_rows * 2.5; //(BINS/4);
+        mem_size = bin_length * num_rows * factor; //(BINS/4);
 
         fprintf(stderr, "memsize:  %d\n", mem_size);
 

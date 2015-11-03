@@ -13,7 +13,7 @@
 #define BI_J 											(gs>>1) + (tID/(gs>>1))*gs + (tID & ((gs>>1)-1))
 #define SWAP(X,Y,T)									T = X; X = Y; Y = T
 
-#include <cub/cub/ptx_util.cuh>
+//#include <cub/cub/ptx_util.cuh>
 
 __device__ __forceinline__ double shfl_down(double val, unsigned int delta, int width = WARP_SIZE)
 {
