@@ -1,6 +1,7 @@
 #include "Matrix_Test.h"
 #include "load_matrix.h"
 
+void SPMM_Test(const std::string filenameA, const std::string filenameB, const std::string filenameC);
 void Matrix_Test(const std::string filename);
 void createStreams();
 void createStreams(const int ID);
@@ -39,6 +40,11 @@ void Matrix_Test(const std::string filename)
 	#if(MULTI_GPU == 1)
 		//SPMMTests_Multi(filename);
 	#else
-		SPMMTests(filename);
+		//SPMMTests(filename);
 	#endif
+}
+
+void SPMM_Test(const std::string filenameA, const std::string filenameB, const std::string filenameC)
+{
+	SPMMTests(filenameA, filenameB, filenameC);
 }

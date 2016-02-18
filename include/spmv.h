@@ -132,7 +132,7 @@ void spmv(	const dcsr_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory, BINS> 
 	const size_t BLOCK_SIZE = 128;
 	const size_t BLOCK_SIZE_LARGE = 256;
 
-	// const size_t THREADS_PER_VECTOR = VECTOR_SIZE;
+	// const size_t THREADS_PER_VECTOR = __VECTOR_SIZE;
 	// const size_t VECTORS_PER_BLOCK = BLOCK_SIZE / THREADS_PER_VECTOR;
 	// const size_t MAX_BLOCKS = cusp::system::cuda::detail::max_active_blocks(spmv_dcsr<INDEX_TYPE, VALUE_TYPE, BINS, VECTORS_PER_BLOCK, THREADS_PER_VECTOR>, BLOCK_SIZE, (size_t) 0);
 	// const size_t NUM_BLOCKS = std::min<size_t>(MAX_BLOCKS, ROUND_UP(A.num_rows, BLOCK_SIZE));
@@ -256,7 +256,7 @@ void spmv(	const dcsr_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory, BINS> 
 // 	get_matrix_info(A, infoA);
 
 // 	const size_t BLOCK_SIZE = 128;
-// 	const size_t THREADS_PER_VECTOR = VECTOR_SIZE;
+// 	const size_t THREADS_PER_VECTOR = __VECTOR_SIZE;
 // 	const size_t VECTORS_PER_BLOCK = BLOCK_SIZE / THREADS_PER_VECTOR;
 
 // 	const size_t MAX_BLOCKS = cusp::system::cuda::detail::max_active_blocks(spmv_dcsr_sorted<INDEX_TYPE, VALUE_TYPE, VECTORS_PER_BLOCK, THREADS_PER_VECTOR>, BLOCK_SIZE, (size_t) 0);
@@ -287,7 +287,7 @@ void spmv(	const dcsr_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory, BINS> 
 // 	cusp::multiply(A.ell, x, T1);
 	
 // 	const size_t BLOCK_SIZE = 128;
-// 	const size_t THREADS_PER_VECTOR = VECTOR_SIZE;
+// 	const size_t THREADS_PER_VECTOR = __VECTOR_SIZE;
 // 	const size_t VECTORS_PER_BLOCK = BLOCK_SIZE / THREADS_PER_VECTOR;
 
 // 	const size_t MAX_BLOCKS = cusp::system::cuda::detail::max_active_blocks(spmv_dcsr<INDEX_TYPE, VALUE_TYPE, BINS, VECTORS_PER_BLOCK, THREADS_PER_VECTOR>, BLOCK_SIZE, (size_t) 0);
@@ -316,7 +316,7 @@ void spmv(	const cusp::csr_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &
 	get_matrix_info(A, infoA);
 
 	const size_t BLOCK_SIZE = 128;
-	const size_t THREADS_PER_VECTOR = VECTOR_SIZE;
+	const size_t THREADS_PER_VECTOR = __VECTOR_SIZE;
 	const size_t VECTORS_PER_BLOCK = BLOCK_SIZE / THREADS_PER_VECTOR;
 
 	const size_t MAX_BLOCKS = cusp::system::cuda::detail::max_active_blocks(spmv_csr_vector_kernel<INDEX_TYPE, VALUE_TYPE, VECTORS_PER_BLOCK, THREADS_PER_VECTOR>, BLOCK_SIZE, (size_t) 0);

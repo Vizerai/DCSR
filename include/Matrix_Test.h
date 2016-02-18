@@ -7,7 +7,7 @@
 #define BLOCK_THREADS_MAX		    512
 #define DEFAULT_OVERFLOW            256
 #define MAX_OFFSET                  4
-#define VECTOR_SIZE                 4
+#define __VECTOR_SIZE               4
 #define RUN_HYB                     0
 #define RUN_CSR                     1
 #define RUN_DCSR                    1
@@ -16,12 +16,13 @@
 #define USE_PARTIAL_VECTORS         0
 #define RUN_ADD                     0
 #define NUM_STREAMS                 8
-#define PRECISION                   32
+#define PRECISION                   64
 
 #define MEMORY_ALIGNMENT    4096
 #define ALIGN_UP(x,size)    ( ((size_t)x+(size-1))&(~(size-1)) ) //works for size that is a power of 2
 #define ROUND_UP(x,y)       ( (x + y-1) / y )
-#define SAFE_DELETE(x)      if(x != NULL) delete x
+#define SAFE_DELETE(x)          if(x != NULL) delete x
+#define SAFE_DELETE_ARRAY(x)    if(x != NULL) delete [] x
 
 #define CPU             0
 #define GPU             1
@@ -71,6 +72,9 @@ __constant__ int c_bin_offsets[8];
 #include <cusp/elementwise.h>
 #include <cusp/transpose.h>
 #include <cusp/blas/blas.h>
+#include <cusp/precond/aggregation/smoothed_aggregation.h>
+#include <cusp/krylov/cg.h>
+#include <cusp/gallery/poisson.h>
 
 //dynamic ell
 #include "dcsr_matrix.h"

@@ -27,11 +27,8 @@ void CFA<INDEX_TYPE, VALUE_TYPE, MEM_TYPE>::f_call_device(const cusp::array1d<VA
 		{
 			gather_reduce(v[i], temp_row_indices[sID], index_count[sID], 0, stream);
 			gather_reduce(a[i], temp_col_indices[sID], index_count[sID], 1, stream);
-<<<<<<< HEAD
 			OuterProductAdd(temp_row_indices[sID], temp_col_indices[sID], index_count[sID], update_queue[sID], stream);
-=======
 			OuterProductAdd(temp_row_indices[sID], temp_col_indices[sID], index_count[sID], sigma, stream);
->>>>>>> 34af523d93e062575f7e92a63da63d3f27fce1fb
 		}
 	}
 
@@ -90,11 +87,8 @@ void CFA<INDEX_TYPE, VALUE_TYPE, MEM_TYPE>::f_list_device(const cusp::array1d<VA
 
 		gather_reduce(v_list, temp_row_indices[sID], index_count[sID], 0, stream);
 		gather_reduce(accum_var_vec[sID], temp_col_indices[sID], index_count[sID], 1, stream);
-<<<<<<< HEAD
 		OuterProductAdd(temp_row_indices[sID], temp_col_indices[sID], index_count[sID], update_queue[sID], stream);
-=======
 		OuterProductAdd(temp_row_indices[sID], temp_col_indices[sID], index_count[sID], sigma, stream);
->>>>>>> 34af523d93e062575f7e92a63da63d3f27fce1fb
 	}
 
 	//r_prime
@@ -145,21 +139,15 @@ void CFA<INDEX_TYPE, VALUE_TYPE, MEM_TYPE>::f_set_device(const cusp::array1d<VAL
 		
 		gather_reduce(v_set, temp_row_indices[sID], index_count[sID], 0, stream);
 		gather_reduce(a_set, temp_col_indices[sID], index_count[sID], 1, stream);
-<<<<<<< HEAD
 		OuterProductAdd(temp_row_indices[sID], temp_col_indices[sID], index_count[sID], update_queue[sID], stream);		
-=======
 		OuterProductAdd(temp_row_indices[sID], temp_col_indices[sID], index_count[sID], sigma, stream);		
->>>>>>> 34af523d93e062575f7e92a63da63d3f27fce1fb
 	}
 
 	//sigma + (a_var (X) void) + (a_set (X) v_set)
 	gather_reduce(VOID_vec, temp_row_indices[sID], index_count[sID], 0, stream);
 	gather_reduce(accum_var_vec[sID], temp_col_indices[sID], index_count[sID], 1, stream);
-<<<<<<< HEAD
 	OuterProductAdd(temp_row_indices[sID], temp_col_indices[sID], index_count[sID], update_queue[sID], stream);
-=======
 	OuterProductAdd(temp_row_indices[sID], temp_col_indices[sID], index_count[sID], sigma, stream);
->>>>>>> 34af523d93e062575f7e92a63da63d3f27fce1fb
 
 	//r_prime
 	spmv(Body, accum_vf_vec[sID], Body_vec[sID], stream);
@@ -238,11 +226,8 @@ void CFA<INDEX_TYPE, VALUE_TYPE, MEM_TYPE>::f_primNum_device(const cusp::array1d
 	//sigma + (a_var (X) NUM)
 	gather_reduce(NUM_vec, temp_row_indices[sID], index_count[sID], 0, stream);
 	gather_reduce(accum_var_vec[sID], temp_col_indices[sID], index_count[sID], 1, stream);
-<<<<<<< HEAD
 	OuterProductAdd(temp_row_indices[sID], temp_col_indices[sID], index_count[sID], update_queue[sID], stream);
-=======
 	OuterProductAdd(temp_row_indices[sID], temp_col_indices[sID], index_count[sID], sigma, stream);
->>>>>>> 34af523d93e062575f7e92a63da63d3f27fce1fb
 
 	//r_prime
 	spmv(Body, accum_vf_vec[sID], Body_vec[sID], stream);
@@ -285,11 +270,8 @@ void CFA<INDEX_TYPE, VALUE_TYPE, MEM_TYPE>::f_primBool_device(const cusp::array1
 	//sigma + (a_var (X) #T#F)
 	gather_reduce(BOOL_vec, temp_row_indices[sID], index_count[sID], 0, stream);
 	gather_reduce(accum_var_vec[sID], temp_col_indices[sID], index_count[sID], 1, stream);
-<<<<<<< HEAD
 	OuterProductAdd(temp_row_indices[sID], temp_col_indices[sID], index_count[sID], update_queue[sID], stream);
-=======
 	OuterProductAdd(temp_row_indices[sID], temp_col_indices[sID], index_count[sID], sigma, stream);
->>>>>>> 34af523d93e062575f7e92a63da63d3f27fce1fb
 
 	//r_prime
 	spmv(Body, accum_vf_vec[sID], Body_vec[sID], stream);
@@ -332,11 +314,8 @@ void CFA<INDEX_TYPE, VALUE_TYPE, MEM_TYPE>::f_primVoid_device(const cusp::array1
 	//sigma + (a_var (X) VOID)
 	gather_reduce(VOID_vec, temp_row_indices[sID], index_count[sID], 0, stream);
 	gather_reduce(accum_var_vec[sID], temp_col_indices[sID], index_count[sID], 1, stream);
-<<<<<<< HEAD
 	OuterProductAdd(temp_row_indices[sID], temp_col_indices[sID], index_count[sID], update_queue[sID], stream);
-=======
 	OuterProductAdd(temp_row_indices[sID], temp_col_indices[sID], index_count[sID], sigma, stream);
->>>>>>> 34af523d93e062575f7e92a63da63d3f27fce1fb
 
 	//r_prime
 	spmv(Body, accum_vf_vec[sID], Body_vec[sID], stream);
@@ -379,7 +358,6 @@ void CFA<INDEX_TYPE, VALUE_TYPE, MEM_TYPE>::LoadMatrix(
 template <typename INDEX_TYPE, typename VALUE_TYPE, typename MEM_TYPE>
 void CFA<INDEX_TYPE, VALUE_TYPE, MEM_TYPE>::LoadMatrix(
 			cusp::csr_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &src,
-<<<<<<< HEAD
 			dell_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &dst)
 {
 	LoadMatrix(src, dst);
@@ -411,11 +389,10 @@ void CFA<INDEX_TYPE, VALUE_TYPE, MEM_TYPE>::f_UpdateStore()
 	f_UpdateStore_device(STREAM_UPDATE, stream);
 }
 
-=======
-			hyb_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &dst)
-{
-	LoadHybMatrix_device(src, dst);
-}
+// hyb_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &dst)
+// {
+// 	LoadHybMatrix_device(src, dst);
+// }
 
 template <typename INDEX_TYPE, typename VALUE_TYPE, typename MEM_TYPE>
 void CFA<INDEX_TYPE, VALUE_TYPE, MEM_TYPE>::LoadMatrix(
@@ -456,5 +433,4 @@ void CFA<INDEX_TYPE, VALUE_TYPE, MEM_TYPE>::RebuildMatrix(
 // 		UpdateStore(sigmaB, sigma_ELL, sigmaA);
 // }
 
->>>>>>> 34af523d93e062575f7e92a63da63d3f27fce1fb
 #endif

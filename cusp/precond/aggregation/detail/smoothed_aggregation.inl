@@ -134,9 +134,10 @@ void smoothed_aggregation<IndexType,ValueType,MemorySpace,SmootherType,SolverTyp
     SetupMatrixType R;
     sa_options.form_restriction(P,R);
 
+	
     // construct Galerkin product R*A*P
     SetupMatrixType RAP;
-    sa_options.galerkin_product(R,A,P,RAP);
+    sa_options.galerkin_product(R,A,P,RAP,sa_levels.size());
 
     // Setup components for next level in hierarchy
     sa_levels.back().aggregates.swap(aggregates);

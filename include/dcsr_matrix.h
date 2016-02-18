@@ -52,17 +52,59 @@ struct dcsr_matrix         //dynamic ELL matrix
         fprintf(stderr, "memsize:  %d\n", mem_size);
 
         row_sizes.resize(num_rows+1);           //1 extra for ending index (replaces MD)
-        row_offsets.resize(pitch*BINS, -1);
+        row_sizes.assign(num_rows+1, 0);
+        row_offsets.resize(pitch*BINS);
+        row_offsets.assign(pitch*BINS, -1);
         SAFE_DELETE(column_indices);
         SAFE_DELETE(values);
         column_indices = new cusp::array1d<INDEX_TYPE, MEM_TYPE>(mem_size, -1);
         values = new cusp::array1d<VALUE_TYPE, MEM_TYPE>(mem_size);
 
         bins.resize(num_rows);
+        bins.assign(num_rows, 0);
         row_ids.resize(num_rows);
+        row_ids.assign(num_rows, 0);
         Prow_sizes.resize(num_rows+1);
+        Prow_sizes.assign(num_rows+1, 0);
         bin_offsets.resize(8);                  //1, 2, 4, 8, 16, 32, 512+
+        bin_offsets.assign(8, 0);
         bin_offsets_H.resize(8);
+        bin_offsets_H.assign(8, 0);
+    }
+
+    //use exact NNZ size
+    void resize(const size_t n_rows, const size_t n_cols, const size_t NNZ)
+    {
+        num_rows = n_rows;
+        num_cols = n_cols;
+        num_entries = 0;
+        num_layers = BINS;
+        bin_length = 0;
+
+        pitch = ALIGN_UP(num_rows*2, 32);
+        mem_size = NNZ;
+
+        fprintf(stderr, "NNZ:  %d\n", NNZ);
+
+        row_sizes.resize(num_rows+1);           //1 extra for ending index (replaces MD)
+        row_sizes.assign(num_rows+1, 0);
+        row_offsets.resize(pitch*BINS);
+        row_offsets.assign(pitch*BINS, -1);
+        SAFE_DELETE(column_indices);
+        SAFE_DELETE(values);
+        column_indices = new cusp::array1d<INDEX_TYPE, MEM_TYPE>(mem_size, -1);
+        values = new cusp::array1d<VALUE_TYPE, MEM_TYPE>(mem_size);
+
+        bins.resize(num_rows);
+        bins.assign(num_rows, 0);
+        row_ids.resize(num_rows);
+        row_ids.assign(num_rows, 0);
+        Prow_sizes.resize(num_rows+1);
+        Prow_sizes.assign(num_rows+1, 0);
+        bin_offsets.resize(8);                  //1, 2, 4, 8, 16, 32, 512+
+        bin_offsets.assign(8, 0);
+        bin_offsets_H.resize(8);
+        bin_offsets_H.assign(8, 0);
     }
 };
 
@@ -76,7 +118,7 @@ struct dcsr_matrix_B         //dynamic ELL matrix
 
     float alpha;                //alpha threshold
     size_t pitch;
-    size_t bin_length;        //chunk length
+    size_t bin_length;          //chunk length
     size_t mem_size;            //total memory used
     size_t num_rows;
     size_t num_cols;

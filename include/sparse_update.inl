@@ -368,16 +368,16 @@ template <typename INDEX_TYPE, typename VALUE_TYPE, size_t BINS, unsigned int VE
 __launch_bounds__(BLOCK_THREAD_SIZE,1)
 __global__ void 
 UpdateMatrix_dcsr(	const INDEX_TYPE num_rows,
-					const INDEX_TYPE pitch,
-					const INDEX_TYPE alpha,
-					const INDEX_TYPE *src_rows,
-					const INDEX_TYPE *src_cols,
-					const VALUE_TYPE *src_vals,
-					const INDEX_TYPE *offsets,
-					INDEX_TYPE *Aj,
-					VALUE_TYPE *Ax,
-					INDEX_TYPE *row_offsets,
-					INDEX_TYPE *row_sizes)
+							const INDEX_TYPE pitch,
+							const INDEX_TYPE alpha,
+							const INDEX_TYPE *src_rows,
+							const INDEX_TYPE *src_cols,
+							const VALUE_TYPE *src_vals,
+							const INDEX_TYPE *offsets,
+							INDEX_TYPE *Aj,
+							VALUE_TYPE *Ax,
+							INDEX_TYPE *row_offsets,
+							INDEX_TYPE *row_sizes)
 {
 	const INDEX_TYPE THREADS_PER_BLOCK = VECTORS_PER_BLOCK * THREADS_PER_VECTOR;
 	const INDEX_TYPE thread_id   = THREADS_PER_BLOCK * blockIdx.x + threadIdx.x;    // global thread index

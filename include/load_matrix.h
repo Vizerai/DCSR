@@ -51,7 +51,8 @@ int ReadMatrixFile(	const std::string &filename,
 					CuspVectorInt_h &col_vec,
 					cusp::array1d<VALUE_TYPE, cusp::host_memory> &val_vec,
 					int &mat_rows,
-					int &mat_cols)
+					int &mat_cols,
+					bool zeroIndex = true)
 {
 	std::ifstream mat_file(filename.c_str());
 	int nnz = 0;
@@ -79,8 +80,8 @@ int ReadMatrixFile(	const std::string &filename,
 
 		for(int i=0; i<nnz; ++i)
 		{
-			int row, col;
-			float val;
+			INDEX_TYPE row, col;
+			VALUE_TYPE val = 0.0;
 			memset(buf, 0, sizeof(buf));
 			mat_file.getline(buf, 256);
 			std::istringstream iss(buf);
@@ -90,12 +91,15 @@ int ReadMatrixFile(	const std::string &filename,
 			iss >> val;
 			if(iss.eof() || iss.fail() || val == 0)
 				val = 1;
-			row--;			//matrix file uses 1 based indexing
-			col--;			//matrix file uses 1 based indexing
+			if(!zeroIndex) {
+				row--;			//matrix file uses 1 based indexing
+				col--;			//matrix file uses 1 based indexing
+			}
 			row_vec[i] = row;
 			col_vec[i] = col;
 			val_vec[i] = val;
-			mat[row].push_back(std::pair<int,float>(col, val));
+			//printf("(%d %d) : %f\n", row, col, val);
+			mat[row].push_back(std::pair<INDEX_TYPE,VALUE_TYPE>(col, val));
 		}
 
 		for(int i=0; i<rows; ++i)
@@ -112,6 +116,51 @@ int ReadMatrixFile(	const std::string &filename,
 	}
 
 	return nnz;
+}
+
+template <typename INDEX_TYPE, typename VALUE_TYPE>
+int getPoissonMatrix(	std::vector< std::vector< std::pair<INDEX_TYPE,VALUE_TYPE> > > &mat,
+								cusp::array1d<INDEX_TYPE, cusp::host_memory> &row_vec, 
+								cusp::array1d<INDEX_TYPE, cusp::host_memory> &col_vec,
+								cusp::array1d<VALUE_TYPE, cusp::host_memory> &val_vec,
+								int numPts,
+								int M,
+								int N,
+								int K) 
+{
+	cusp::coo_matrix<INDEX_TYPE, VALUE_TYPE, cusp::host_memory> A;
+	mat.resize(M);
+
+	// create Poisson matrix
+	switch(numPts) {
+		case 5:	//2D
+			cusp::gallery::poisson5pt(A, M, N);
+			break;
+		case 7:	//3D
+			cusp::gallery::poisson7pt(A, M, N, K);
+			break;
+		case 9:	//2D
+			cusp::gallery::poisson9pt(A, M, N);
+			break;
+		case 27:	//3D
+			cusp::gallery::poisson27pt(A, M, N, K);
+			break;
+		default:
+			break;	
+	}
+
+	A.row_indices = row_vec;
+	A.column_indices = col_vec;
+	A.values = val_vec;
+
+	int size = row_vec.size();
+	for(int i=0; i<size; ++i) {
+		int row = row_vec[i];
+		std::pair<INDEX_TYPE,VALUE_TYPE> p = std::make_pair(col_vec[i], val_vec[i]);
+		mat[row].push_back(p);
+	}
+
+	return size;
 }
 
 template <typename INDEX_TYPE, typename VALUE_TYPE, size_t BINS>
@@ -372,11 +421,20 @@ void CheckMatrices(	const dcsr_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memor
 		sort(vec_mat1[row].begin(), vec_mat1[row].end());
 		sort(vec_mat2[row].begin(), vec_mat2[row].end());
 
-		// if(vec_mat1[row].size() != vec_mat2[row].size())
-		// {
-		// 	fprintf(stderr, "row: %d *** Row Size A: %d   Row Size B: %d\n", row, vec_mat1[row].size(), vec_mat2[row].size());
-		// 	num_diff++;
-		// }
+		if(vec_mat1[row].size() != vec_mat2[row].size())
+		{
+			// if(row == 2) {
+			//fprintf(stderr, "row: %d *** Row Size A: %d   Row Size B: %d\n", row, vec_mat1[row].size(), vec_mat2[row].size());
+			
+			// 	for(int i=0; i<vec_mat1[row].size(); ++i)
+			// 		printf("(%d %f) ", vec_mat1[row][i].first, vec_mat1[row][i].second);
+			// 	printf("\n");
+			// 	for(int i=0; i<vec_mat2[row].size(); ++i)
+			// 		printf("(%d %f) ", vec_mat2[row][i].first, vec_mat2[row][i].second);
+			// 	printf("\n");
+			// }
+			num_diff++;
+		}
 
 		// for(int i=0; i<vec_mat2[row].size(); ++i)
 		// {

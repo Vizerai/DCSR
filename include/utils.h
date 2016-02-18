@@ -7,5 +7,6 @@
 
 //extern void Test(const std::string &filename);
 extern void Matrix_Test(const std::string filename);
+extern void SPMM_Test(const std::string filenameA, const std::string filenameB, const std::string filenameC);
 
 #endif

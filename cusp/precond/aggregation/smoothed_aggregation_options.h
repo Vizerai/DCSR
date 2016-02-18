@@ -33,6 +33,11 @@
 #include <cusp/precond/aggregation/strength.h>
 #include <cusp/precond/aggregation/tentative.h>
 
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <sstream>
+
 namespace cusp
 {
 namespace precond
@@ -132,6 +137,21 @@ struct sa_level
 };
 
 template<typename IndexType, typename ValueType, typename MemorySpace>
+void WriteOutMatrix(cusp::coo_matrix<IndexType, ValueType, MemorySpace> A,
+					const std::string filename)
+{
+	cusp::coo_matrix<IndexType, ValueType, cusp::host_memory> T = A;
+	std::fstream file;
+	file.open(filename.c_str(), std::fstream::out);
+	
+	file << T.num_rows << " " << T.num_cols << " " << T.num_entries << std::endl;
+	for(int i=0; i<T.num_entries; ++i)
+		file << T.row_indices[i] << " " << T.column_indices[i] << " " << T.values[i] << std::endl;
+	
+	file.close();
+}
+
+template<typename IndexType, typename ValueType, typename MemorySpace>
 class smoothed_aggregation_options
 {
 protected:
@@ -187,12 +207,20 @@ public:
         cusp::transpose(P,R);
     }
 
-    virtual void galerkin_product(const MatrixType& R, const MatrixType& A, const MatrixType& P, MatrixType& RAP) const
+    virtual void galerkin_product(const MatrixType& R, const MatrixType& A, const MatrixType& P, MatrixType& RAP, int level) const
     {
         // TODO test speed of R * (A * P) vs. (R * A) * P
+		std::stringstream ss;
+		ss << level++;
+		//WriteOutMatrix(R, "R" + ss.str());
+		//WriteOutMatrix(A, "A" + ss.str());
+		//WriteOutMatrix(P, "P" + ss.str());
+		
         MatrixType AP;
         cusp::multiply(A, P, AP);
+		//WriteOutMatrix(AP, "AP" + ss.str());
         cusp::multiply(R, AP, RAP);
+		//WriteOutMatrix(RAP, "RAP" + ss.str());
     }
 };
 

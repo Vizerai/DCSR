@@ -79,7 +79,7 @@ void LoadMatrix(	hyb_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &mat,
 
 
 	const size_t BLOCK_SIZE = BLOCK_THREAD_SIZE;
-	const size_t THREADS_PER_VECTOR = VECTOR_SIZE;
+	const size_t THREADS_PER_VECTOR = __VECTOR_SIZE;
 	const size_t VECTORS_PER_BLOCK = BLOCK_SIZE / THREADS_PER_VECTOR;
 	const size_t MAX_BLOCKS = cusp::system::cuda::detail::max_active_blocks(LoadMatrix_hyb_coo<INDEX_TYPE, VALUE_TYPE, VECTORS_PER_BLOCK, THREADS_PER_VECTOR>, BLOCK_SIZE, (size_t) 0);
 	const size_t NUM_BLOCKS = std::min<size_t>(MAX_BLOCKS, ROUND_UP(mat.num_rows, VECTORS_PER_BLOCK));
@@ -179,7 +179,7 @@ void LoadMatrix(	hyb_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &dst,
 	get_matrix_info(dst, infoDst);
 
 	const size_t BLOCK_SIZE = BLOCK_THREAD_SIZE;
-	const size_t THREADS_PER_VECTOR = VECTOR_SIZE;
+	const size_t THREADS_PER_VECTOR = __VECTOR_SIZE;
 	const size_t VECTORS_PER_BLOCK = BLOCK_SIZE / THREADS_PER_VECTOR;
 	const size_t MAX_BLOCKS = cusp::system::cuda::detail::max_active_blocks(LoadMatrix_hyb_csr<INDEX_TYPE, VALUE_TYPE, VECTORS_PER_BLOCK, THREADS_PER_VECTOR>, BLOCK_SIZE, (size_t) 0);
 	const size_t NUM_BLOCKS = std::min<size_t>(MAX_BLOCKS, ROUND_UP(infoDst.num_rows, VECTORS_PER_BLOCK));
@@ -271,7 +271,7 @@ void UpdateMatrix(	dcsr_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory, BINS
 	if(!permuted)
 	{
 		const size_t BLOCK_SIZE = 128;
-		const size_t THREADS_PER_VECTOR = VECTOR_SIZE;
+		const size_t THREADS_PER_VECTOR = __VECTOR_SIZE;
 		const size_t VECTORS_PER_BLOCK = BLOCK_SIZE / THREADS_PER_VECTOR;
 
 		const size_t MAX_BLOCKS = cusp::system::cuda::detail::max_active_blocks(UpdateMatrix_dcsr<INDEX_TYPE, VALUE_TYPE, BINS, VECTORS_PER_BLOCK, THREADS_PER_VECTOR>, BLOCK_SIZE, (size_t) 0);
@@ -431,11 +431,11 @@ void SortMatrixRow(	dcsr_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory, BIN
 	// fprintf(stderr, "Sorting DCSR matrix:  size: %d  N: %d\n", size, N);
 
 	const size_t BLOCK_SIZE = 128;
-	// const size_t VECTORS_PER_BLOCK = BLOCK_SIZE / VECTOR_SIZE;
-	// const size_t MAX_BLOCKS = cusp::system::cuda::detail::max_active_blocks(CompactIndices<INDEX_TYPE, VALUE_TYPE, BINS, VECTORS_PER_BLOCK, VECTOR_SIZE>, BLOCK_SIZE, (size_t) 0);
+	// const size_t VECTORS_PER_BLOCK = BLOCK_SIZE / __VECTOR_SIZE;
+	// const size_t MAX_BLOCKS = cusp::system::cuda::detail::max_active_blocks(CompactIndices<INDEX_TYPE, VALUE_TYPE, BINS, VECTORS_PER_BLOCK, __VECTOR_SIZE>, BLOCK_SIZE, (size_t) 0);
 	// const size_t NUM_BLOCKS = std::min<size_t>(MAX_BLOCKS, ROUND_UP(mat.num_rows, VECTORS_PER_BLOCK));
 
-	// CompactIndices<INDEX_TYPE, VALUE_TYPE, BINS, VECTORS_PER_BLOCK, VECTOR_SIZE> <<<NUM_BLOCKS, BLOCK_SIZE>>> (
+	// CompactIndices<INDEX_TYPE, VALUE_TYPE, BINS, VECTORS_PER_BLOCK, __VECTOR_SIZE> <<<NUM_BLOCKS, BLOCK_SIZE>>> (
 	// 		infoMat.num_rows,
 	// 		infoMat.pitch,
 	// 		TPC(&T_cols[0]),
@@ -549,8 +549,8 @@ void SortMatrixRow(	dcsr_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory, BIN
 	//cudaPrintfDisplay(stdout, true);
 
 	//shallow copy
-	delete mat.column_indices;
-	delete mat.values;
+	SAFE_DELETE(mat.column_indices);
+	SAFE_DELETE(mat.values);
 	mat.column_indices = T_cols;
 	mat.values = T_vals;
 
@@ -616,7 +616,7 @@ void BinRows(dcsr_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory, BINS> &mat
 // 	get_matrix_info(mat, infoMat);
 
 // 	const size_t BLOCK_SIZE = 128;
-// 	const size_t THREADS_PER_VECTOR_A = VECTOR_SIZE;
+// 	const size_t THREADS_PER_VECTOR_A = __VECTOR_SIZE;
 // 	const size_t VECTORS_PER_BLOCK_A = BLOCK_SIZE / THREADS_PER_VECTOR_A;
 
 // 	const size_t MAX_BLOCKS_A = cusp::system::cuda::detail::max_active_blocks(SetRowIndices<INDEX_TYPE, VALUE_TYPE, BINS, VECTORS_PER_BLOCK_A, THREADS_PER_VECTOR_A>, BLOCK_SIZE, (size_t) 0);
