@@ -79,48 +79,6 @@ __constant__ int c_bin_offsets[8];
 //dynamic ell
 #include "dcsr_matrix.h"
 
-#if(BUILD_TYPE == GPU)
-
-// template <typename VALUE_TYPE>
-// void AND_OP(const cusp::array1d<VALUE_TYPE, cusp::device_memory> &a,
-//             const cusp::array1d<VALUE_TYPE, cusp::device_memory> &b,
-//             cusp::array1d<VALUE_TYPE, cusp::device_memory> &c);
-
-// template <typename VALUE_TYPE>
-// void get_indices(   const cusp::array1d<VALUE_TYPE, cusp::device_memory> &a,
-//                     cusp::array1d<VALUE_TYPE, cusp::device_memory> &b);
-
-// template <typename VALUE_TYPE>
-// void AccumVec(  cusp::array1d<VALUE_TYPE, cusp::device_memory> &a,
-//                 const cusp::array1d<VALUE_TYPE, cusp::device_memory> &b);
-
-// template <typename INDEX_TYPE, typename VALUE_TYPE>
-// void AccumMat(  const cusp::ell_matrix<int, VALUE_TYPE, cusp::device_memory> &mat,
-//                 cusp::array1d<VALUE_TYPE, cusp::device_memory> &vec);
-
-// template <typename INDEX_TYPE, typename VALUE_TYPE>
-// void column_select( const cusp::ell_matrix<int, VALUE_TYPE, cusp::device_memory> &A,
-//                     const cusp::array1d<VALUE_TYPE, cusp::device_memory> &s,
-//                     const INDEX_TYPE index,
-//                     cusp::array1d<VALUE_TYPE, cusp::device_memory> &y);
-
-// template <typename INDEX_TYPE, typename VALUE_TYPE>
-// void OuterProduct(  const cusp::array1d<VALUE_TYPE, cusp::device_memory> &a,
-//                     const cusp::array1d<VALUE_TYPE, cusp::device_memory> &b,
-//                     cusp::ell_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &mat);
-
-// template <typename INDEX_TYPE, typename VALUE_TYPE>
-// void ell_add(   cusp::ell_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &A,
-//                 cusp::ell_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &B,
-//                 cusp::ell_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &C);
-
-// template <typename INDEX_TYPE, typename VALUE_TYPE>
-// void ell_spmv(  const cusp::ell_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &A,
-//                 const cusp::array1d<VALUE_TYPE, cusp::device_memory> &x,
-//                 cusp::array1d<VALUE_TYPE, cusp::device_memory> &y);
-
-#endif      //GPU
-
 struct is_non_negative
 {
     __host__ __device__

@@ -420,33 +420,6 @@ void CheckMatrices(	const dcsr_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memor
 		//sort vectors
 		sort(vec_mat1[row].begin(), vec_mat1[row].end());
 		sort(vec_mat2[row].begin(), vec_mat2[row].end());
-
-		if(vec_mat1[row].size() != vec_mat2[row].size())
-		{
-			// if(row == 2) {
-			//fprintf(stderr, "row: %d *** Row Size A: %d   Row Size B: %d\n", row, vec_mat1[row].size(), vec_mat2[row].size());
-			
-			// 	for(int i=0; i<vec_mat1[row].size(); ++i)
-			// 		printf("(%d %f) ", vec_mat1[row][i].first, vec_mat1[row][i].second);
-			// 	printf("\n");
-			// 	for(int i=0; i<vec_mat2[row].size(); ++i)
-			// 		printf("(%d %f) ", vec_mat2[row][i].first, vec_mat2[row][i].second);
-			// 	printf("\n");
-			// }
-			num_diff++;
-		}
-
-		// for(int i=0; i<vec_mat2[row].size(); ++i)
-		// {
-		// 	if(	vec_mat1[row][i].first != vec_mat2[row][i].first || vec_mat1[row][i].second != vec_mat2[row][i].second)
-		// 	{
-		// 		fprintf(stderr, "CSR(%d, %d):  %f\t", row, vec_mat2[row][i].first, vec_mat2[row][i].second);
-		// 		fprintf(stderr, "DCSR(%d, %d):  %f", row, vec_mat1[row][i].first, vec_mat1[row][i].second);
-		// 		fprintf(stderr, "\n");
-		// 		num_diff++;
-		// 	}
-		// }
-
 		nnz += vec_mat2[row].size();
 	}
 

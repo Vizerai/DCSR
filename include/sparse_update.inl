@@ -10,357 +10,6 @@ namespace device
 
 __constant__ int chunk_sizes[8];
 
-// template <typename INDEX_TYPE, typename VALUE_TYPE>
-// __launch_bounds__(BLOCK_THREADS_MAX,1)
-// __global__ void 
-// OuterProduct(	const VALUE_TYPE *a,
-// 					const VALUE_TYPE *b,
-// 					const INDEX_TYPE num_rows,
-// 					const INDEX_TYPE num_cols,
-// 					const INDEX_TYPE num_cols_per_row,
-// 					const INDEX_TYPE pitch,
-// 					INDEX_TYPE *column_indices,
-// 					VALUE_TYPE *values)
-// {
-// 	const int tID = blockDim.x * blockIdx.x + threadIdx.x;
-// 	const int grid_size = blockDim.x * gridDim.x;
-	
-// 	const INDEX_TYPE invalid_index = cusp::ell_matrix<int, INDEX_TYPE, cusp::device_memory>::invalid_index;
-
-// 	__shared__ int entries_b[BLOCK_THREAD_SIZE];
-// 	__shared__ int num_entries_a, num_entries_b;
-
-// 	entries_b[threadIdx.x] = -1;
-// 	__syncthreads();
-
-// 	if(threadIdx.x == 0)		//first thread of every block
-// 	{
-// 		num_entries_a = 0;
-// 		num_entries_b = 0;
-
-// 		for(int i=0; i < num_rows; ++i)
-// 		{
-// 			if(a[i] != 0)
-// 				num_entries_a++;
-// 		}
-
-// 		for(int i=0; i < num_cols; ++i)
-// 		{
-// 			if(b[i] != 0)
-// 			{
-// 				entries_b[num_entries_b] = i;
-// 				num_entries_b++;
-// 			}
-// 		}
-// 	}
-// 	__syncthreads();
-
-// 	for(int row=tID; row<num_rows; row+=grid_size)
-// 	{
-// 		int offset = row;
-// 		if(a[row])
-// 		{
-// 			for(int n=0; n < num_entries_b; ++n, offset+=pitch)
-// 			{
-// 				column_indices[offset] = entries_b[n];
-// 				values[offset] = 1;
-// 			}
-// 		}
-
-// 		while(offset < num_cols_per_row*pitch)
-// 		{
-// 			column_indices[offset] = invalid_index;
-// 			offset += pitch;
-// 		}
-// 	}
-// }
-
-// //size of a must be num_rows + 1
-// //size of b must be num_cols + 1
-// //last entry of each array is used for storing entry count
-// //only add unique entries
-// template <typename INDEX_TYPE, typename VALUE_TYPE>
-// __launch_bounds__(BLOCK_THREADS_MAX,1)
-// __global__ void 
-// OuterProductAdd_ELL_B(	const VALUE_TYPE *a,
-// 						const VALUE_TYPE *b,
-// 						const INDEX_TYPE *index_count,
-// 						const INDEX_TYPE num_rows,
-// 						const INDEX_TYPE num_cols,
-// 						const INDEX_TYPE num_cols_per_row,
-// 						const INDEX_TYPE pitch,
-// 						INDEX_TYPE *column_indices,
-// 						VALUE_TYPE *values)
-// {
-// 	const int tID = threadIdx.x & (WARP_SIZE-1); 									//thread ID
-// 	const int wID = (blockDim.x * blockIdx.x + threadIdx.x) / WARP_SIZE;			//warp ID
-// 	const int grid_size = (blockDim.x * gridDim.x) / WARP_SIZE;
-// 	const INDEX_TYPE invalid_index = cusp::ell_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory>::invalid_index;
-
-// 	INDEX_TYPE num_entries_a = index_count[0];
-// 	INDEX_TYPE num_entries_b = index_count[1];
-// 	__shared__ INDEX_TYPE row_index[BLOCK_THREAD_SIZE/WARP_SIZE];
-
-// 	for(INDEX_TYPE j=wID; j < num_entries_a; j+=grid_size)
-// 	{
-// 		INDEX_TYPE row = a[j];
-// 		row_index[wID] = column_indices[row];
-// 		for(INDEX_TYPE k=tID; k < num_entries_b; k+=WARP_SIZE)
-// 		{
-// 			VALUE_TYPE b_col = b[k];
-// 			INDEX_TYPE offset = row;
-// 			for(INDEX_TYPE n=1; n < num_cols_per_row; ++n, offset+=pitch)
-// 			{
-// 				INDEX_TYPE col = column_indices[offset];
-// 				if(col == b_col)
-// 				{
-// 					break;
-// 				}
-// 				else if(col == invalid_index)
-// 				{
-// 					column_indices[row*(atomicAdd(&row_index[wID],1)+1)] = b_col;
-// 					//values[offset] = 1;
-// 					break;
-// 				}
-// 			}
-// 		}
-// 		if(tID == 0)
-// 			column_indices[row] = row_index[wID];
-// 	}
-// }
-
-// //size of a must be num_rows + 1
-// //size of b must be num_cols + 1
-// //last entry of each array is used for storing entry count
-// //only add unique entries
-// template <typename INDEX_TYPE, typename VALUE_TYPE>
-// __launch_bounds__(BLOCK_THREADS_MAX,1)
-// __global__ void 
-// OuterProductAdd_HYB_B(	const VALUE_TYPE *a,
-// 						const VALUE_TYPE *b,
-// 						const INDEX_TYPE *index_count,
-// 						const INDEX_TYPE num_rows,
-// 						const INDEX_TYPE num_cols,
-// 						const INDEX_TYPE num_cols_per_row,
-// 						const INDEX_TYPE pitch,
-// 						INDEX_TYPE *row_sizes,
-// 						INDEX_TYPE *column_indices,
-// 						INDEX_TYPE *coo_row_indices,
-// 						INDEX_TYPE *coo_column_indices)
-// {
-// 	//const int tID = threadIdx.x & (WARP_SIZE-1); 									//thread ID
-// 	//const int wID = (blockDim.x * blockIdx.x + threadIdx.x) / WARP_SIZE;			//warp ID
-// 	//const int grid_size = (blockDim.x * gridDim.x) / WARP_SIZE;
-// 	const int tID = blockDim.x * blockIdx.x + threadIdx.x;
-// 	const int grid_size = blockDim.x * gridDim.x;
-// 	const INDEX_TYPE invalid_index = cusp::ell_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory>::invalid_index;
-
-// 	INDEX_TYPE num_entries_a = index_count[0];
-// 	INDEX_TYPE num_entries_b = index_count[1];
-
-// 	//for(INDEX_TYPE j=wID; j < num_entries_a; j+=grid_size)
-// 	for(INDEX_TYPE j=tID; j < num_entries_a; j+=grid_size)
-// 	{
-// 		INDEX_TYPE row = a[j];
-// 		//for(INDEX_TYPE k=tID; k < num_entries_b; k+=WARP_SIZE)
-// 		for(INDEX_TYPE k=0; k<num_entries_b; ++k)
-// 		{
-// 			VALUE_TYPE b_col = b[k];
-// 			INDEX_TYPE offset = row;
-// 			bool overflow = false;
-// 			for(INDEX_TYPE n=1; n < num_cols_per_row; ++n, offset+=pitch)
-// 			{
-// 				INDEX_TYPE col = column_indices[offset];
-// 				if(col == b_col)
-// 				{
-// 					if(n == num_cols_per_row-1)
-// 						overflow = true;
-// 					break;
-// 				}
-// 				else if(col == invalid_index)
-// 				{
-// 					INDEX_TYPE index = atomicAdd(&row_sizes[row], 1);
-// 					column_indices[row + pitch*index] = b_col;
-// 					break;
-// 				}
-// 			}
-
-// 			//coordinate overflow
-// 			if(overflow)
-// 			{
-// 				bool valid = true;
-// 				for(int i=1; i < coo_column_indices[0]; ++i)
-// 				{
-// 					if(coo_column_indices[i] == b_col && coo_row_indices[i] == row)
-// 					{
-// 						valid = false;
-// 						break;
-// 					}
-// 				}
-
-// 				if(valid)
-// 				{
-// 					int index = atomicAdd(&coo_column_indices[0], 1)+1;
-// 					coo_row_indices[index] = row;
-// 					coo_column_indices[index] = b_col;
-// 				}
-// 			}
-// 		}
-// 	}
-// }
-
-// //size of a must be num_rows + 1
-// //size of b must be num_cols + 1
-// //last entry of each array is used for storing entry count
-// //only add unique entries
-// template <typename INDEX_TYPE, typename VALUE_TYPE>
-// __launch_bounds__(BLOCK_THREADS_MAX,1)
-// __global__ void 
-// OuterProductAdd_Queue(	const VALUE_TYPE *a,
-// 						const VALUE_TYPE *b,
-// 						const INDEX_TYPE *index_count,
-// 						INDEX_TYPE *queue)
-// {
-// 	//const int tID = threadIdx.x & (WARP_SIZE-1); 									//thread ID
-// 	//const int wID = (blockDim.x * blockIdx.x + threadIdx.x) / WARP_SIZE;			//warp ID
-// 	//const int grid_size = (blockDim.x * gridDim.x) / WARP_SIZE;
-// 	const int tID = blockDim.x * blockIdx.x + threadIdx.x;
-// 	const int grid_size = blockDim.x * gridDim.x;
-// 	//const INDEX_TYPE invalid_index = -1;
-
-// 	INDEX_TYPE num_entries_a = index_count[0];
-// 	INDEX_TYPE num_entries_b = index_count[1];
-// 	//INDEX_TYPE qstart = queue[0];
-// 	INDEX_TYPE qstop = queue[1];
-
-// 	if(tID == 0)
-// 	{
-// 		queue[qstop] = num_entries_a;
-// 		queue[qstop+1] = num_entries_b;
-// 	}
-// 	__syncthreads();
-
-// 	for(INDEX_TYPE j=tID; j < num_entries_a; j+=grid_size)
-// 	{
-// 		queue[qstop+2 + j] = a[j];
-// 	}
-	
-// 	for(INDEX_TYPE k=tID; k<num_entries_b; k+=grid_size)
-// 	{
-// 		queue[qstop+2 + num_entries_a + k] = b[k];
-// 	}
-// 	__syncthreads();
-
-// 	if(tID == 0)
-// 	{
-// 		queue[1] += (num_entries_a + num_entries_b + 2);
-// 	}
-// 	__syncthreads();
-// }
-
-// template <typename INDEX_TYPE, typename VALUE_TYPE, unsigned int BINS, unsigned int VECTORS_PER_BLOCK, unsigned int THREADS_PER_VECTOR>
-// __launch_bounds__(256,1)			//<-- Check this....  seriously WTF...
-// __global__ void 
-// add_matrix_dcsr(	const INDEX_TYPE num_rows,
-// 					const INDEX_TYPE pitchA,
-// 					const INDEX_TYPE pitchB,
-// 					INDEX_TYPE *Aj,
-// 					VALUE_TYPE *Ax,
-// 					INDEX_TYPE *A_row_offsets,
-// 					INDEX_TYPE *A_row_sizes,
-// 					const INDEX_TYPE *Bj,
-// 					const VALUE_TYPE *Bx,
-// 					const INDEX_TYPE *B_row_offsets,
-// 					const INDEX_TYPE *B_row_sizes)
-// {
-// 	const INDEX_TYPE THREADS_PER_BLOCK = VECTORS_PER_BLOCK * THREADS_PER_VECTOR;
-
-// 	const INDEX_TYPE thread_id   = THREADS_PER_BLOCK * blockIdx.x + threadIdx.x;    // global thread index
-// 	const INDEX_TYPE thread_lane = threadIdx.x & (THREADS_PER_VECTOR - 1);          // thread index within the vector
-// 	const INDEX_TYPE vector_id   = thread_id   /  THREADS_PER_VECTOR;               // global vector index
-// 	//const INDEX_TYPE vector_lane = threadIdx.x /  THREADS_PER_VECTOR;            	// vector index within the block
-// 	const INDEX_TYPE num_vectors = VECTORS_PER_BLOCK * gridDim.x;                   // total number of active vectors
-
-// 	for(INDEX_TYPE row=vector_id; row < num_rows; row+=num_vectors)
-// 	{
-// 		INDEX_TYPE Aoffset = 0;
-// 		INDEX_TYPE rlA = A_row_sizes[row];
-// 		INDEX_TYPE AR_idx = 0, A_idx, A_row_start, A_row_end;
-// 		A_row_start = A_row_offsets[row*2];
-// 		A_row_end = A_row_offsets[row*2 + 1];
-// 		INDEX_TYPE free_mem = 0;
-
-// 		while(AR_idx < rlA)
-// 		{
-// 			AR_idx += A_row_end - A_row_start;
-// 			if(AR_idx < rlA)
-// 			{
-// 				Aoffset++;
-// 				A_row_start = A_row_offsets[Aoffset*pitchA + row*2];
-// 				A_row_end = A_row_offsets[Aoffset*pitchA + row*2 + 1];
-// 			}
-// 		}
-// 		if(AR_idx > rlA)
-// 		{
-// 			A_idx = A_row_start + (A_row_end - A_row_start) - (AR_idx - rlA);
-// 			AR_idx = rlA;
-// 			free_mem = A_row_end - A_idx;
-// 		}
-// 		else
-// 			A_idx = A_row_end;
-
-// 		INDEX_TYPE Boffset = 0;
-// 		INDEX_TYPE rlB = B_row_sizes[row];
-// 		INDEX_TYPE BR_idx = thread_lane, B_idx, B_row_start, B_row_end;
-// 		B_row_start = B_row_offsets[row*2];
-// 		B_row_end = B_row_offsets[row*2 + 1];
-// 		B_idx = B_row_start + thread_lane;
-// 		A_idx += thread_lane;
-
-// 		//allocate new space for chunk
-// 		if(thread_lane == 0 && free_mem < rlB && rlB > 0)
-// 		{
-// 			INDEX_TYPE new_size = rlB - free_mem;
-// 			INDEX_TYPE new_addr = atomicAdd(&A_row_sizes[num_rows], new_size);	//increase global memory pointer
-			
-// 			A_row_offsets[(Aoffset+1)*pitchA + row*2] = new_addr;
-// 			A_row_offsets[(Aoffset+1)*pitchA + row*2 + 1] = new_addr + new_size;
-// 		}
-
-// 		while(BR_idx < rlB)
-// 		{
-// 			for(B_idx; B_idx < B_row_end && BR_idx < rlB; B_idx+=THREADS_PER_VECTOR, BR_idx+=THREADS_PER_VECTOR)
-// 			{
-// 				if(A_idx >= A_row_end)
-// 				{
-// 					INDEX_TYPE pos = A_idx - A_row_end;
-// 					Aoffset++;
-// 					A_row_start = A_row_offsets[Aoffset*pitchA + row*2];
-// 					A_row_end = A_row_offsets[Aoffset*pitchA + row*2 + 1];
-// 					A_idx = A_row_start + pos;
-// 				}
-
-// 				Aj[A_idx] = Bj[B_idx];
-// 				Ax[A_idx] = Bx[B_idx];
-
-// 				A_idx += THREADS_PER_VECTOR;
-// 			}
-
-// 			if(B_idx >= B_row_end && BR_idx < rlB)
-// 			{
-// 				INDEX_TYPE pos = B_idx - B_row_end;
-// 				Boffset++;
-// 				B_row_start = B_row_offsets[Boffset*pitchB + row*2];
-// 				B_row_end = B_row_offsets[Boffset*pitchB + row*2 + 1];
-// 				B_idx = B_row_start + pos;
-// 			}
-// 		}
-
-// 		if(thread_lane == 0)
-// 			A_row_sizes[row] += rlB;
-// 	}
-// }
-
 //*****************************************************************************//
 //update matrices with arrays of row, column and value indices
 //*****************************************************************************//
@@ -480,123 +129,123 @@ UpdateMatrix_dcsr(	const INDEX_TYPE num_rows,
 	}
 }
 
-// //permuted variant
-// //takes in permuted row sizes and permuted row IDs as well
-// template <typename INDEX_TYPE, typename VALUE_TYPE, unsigned int BINS, unsigned int VECTORS_PER_BLOCK, unsigned int THREADS_PER_VECTOR>
-// __launch_bounds__(BLOCK_THREAD_SIZE,1)
-// __global__ void 
-// UpdateMatrixP_dcsr(	const INDEX_TYPE num_rows,
-// 					const INDEX_TYPE pitch,
-// 					const INDEX_TYPE alpha,
-// 					const INDEX_TYPE *src_rows,
-// 					const INDEX_TYPE *src_cols,
-// 					const VALUE_TYPE *src_vals,
-// 					const INDEX_TYPE *offsets,
-// 					INDEX_TYPE *Aj,
-// 					VALUE_TYPE *Ax,
-// 					INDEX_TYPE *row_offsets,
-// 					INDEX_TYPE *row_sizes)
-// {
-// 	// const INDEX_TYPE tID = blockDim.x*blockIdx.x + threadIdx.x;
-// 	// const INDEX_TYPE grid_size = blockDim.x * gridDim.x;				//grid size
+//permuted variant
+//takes in permuted row sizes and permuted row IDs as well
+template <typename INDEX_TYPE, typename VALUE_TYPE, unsigned int BINS, unsigned int VECTORS_PER_BLOCK, unsigned int THREADS_PER_VECTOR>
+__launch_bounds__(BLOCK_THREAD_SIZE,1)
+__global__ void 
+UpdateMatrixP_dcsr(	const INDEX_TYPE num_rows,
+					const INDEX_TYPE pitch,
+					const INDEX_TYPE alpha,
+					const INDEX_TYPE *src_rows,
+					const INDEX_TYPE *src_cols,
+					const VALUE_TYPE *src_vals,
+					const INDEX_TYPE *offsets,
+					INDEX_TYPE *Aj,
+					VALUE_TYPE *Ax,
+					INDEX_TYPE *row_offsets,
+					INDEX_TYPE *row_sizes)
+{
+	// const INDEX_TYPE tID = blockDim.x*blockIdx.x + threadIdx.x;
+	// const INDEX_TYPE grid_size = blockDim.x * gridDim.x;				//grid size
 
-// 	const INDEX_TYPE THREADS_PER_BLOCK = VECTORS_PER_BLOCK * THREADS_PER_VECTOR;
-// 	const INDEX_TYPE thread_id   = THREADS_PER_BLOCK * blockIdx.x + threadIdx.x;    // global thread index
-// 	const INDEX_TYPE thread_lane = threadIdx.x & (THREADS_PER_VECTOR - 1);          // thread index within the vector
-// 	const INDEX_TYPE vector_id   = thread_id   /  THREADS_PER_VECTOR;               // global vector index
-// 	const INDEX_TYPE vector_lane = threadIdx.x /  THREADS_PER_VECTOR;             	// vector index within the block
-// 	const INDEX_TYPE num_vectors = VECTORS_PER_BLOCK * gridDim.x;                   // total number of active vectors
+	const INDEX_TYPE THREADS_PER_BLOCK = VECTORS_PER_BLOCK * THREADS_PER_VECTOR;
+	const INDEX_TYPE thread_id   = THREADS_PER_BLOCK * blockIdx.x + threadIdx.x;    // global thread index
+	const INDEX_TYPE thread_lane = threadIdx.x & (THREADS_PER_VECTOR - 1);          // thread index within the vector
+	const INDEX_TYPE vector_id   = thread_id   /  THREADS_PER_VECTOR;               // global vector index
+	const INDEX_TYPE vector_lane = threadIdx.x /  THREADS_PER_VECTOR;             	// vector index within the block
+	const INDEX_TYPE num_vectors = VECTORS_PER_BLOCK * gridDim.x;                   // total number of active vectors
 
-// 	__shared__ volatile INDEX_TYPE new_segment[VECTORS_PER_BLOCK];
+	__shared__ volatile INDEX_TYPE new_segment[VECTORS_PER_BLOCK];
 
-// 	for(INDEX_TYPE row=vector_id; row < num_rows; row+=num_vectors)
-// 	{
-// 		INDEX_TYPE Aoffset = 0;
-// 		INDEX_TYPE rlA = row_sizes[row];
-// 		INDEX_TYPE A_idx = 0;
-// 		INDEX_TYPE A_row_start = row_offsets[row*2];
-// 		INDEX_TYPE A_row_end = row_offsets[row*2 + 1];
-// 		INDEX_TYPE free_mem = 0;
+	for(INDEX_TYPE row=vector_id; row < num_rows; row+=num_vectors)
+	{
+		INDEX_TYPE Aoffset = 0;
+		INDEX_TYPE rlA = row_sizes[row];
+		INDEX_TYPE A_idx = 0;
+		INDEX_TYPE A_row_start = row_offsets[row*2];
+		INDEX_TYPE A_row_end = row_offsets[row*2 + 1];
+		INDEX_TYPE free_mem = 0;
 
-// 		const INDEX_TYPE B_row_start = offsets[row];
-// 		const INDEX_TYPE B_row_end = offsets[row+1];
-// 		const INDEX_TYPE rlB = B_row_end - B_row_start;
+		const INDEX_TYPE B_row_start = offsets[row];
+		const INDEX_TYPE B_row_end = offsets[row+1];
+		const INDEX_TYPE rlB = B_row_end - B_row_start;
 
-// 		if(rlB > 0)
-// 		{
-// 			//check to see if first bin has any memory allocated
-// 			if(rlA == 0 && A_row_start == A_row_end)
-// 			{
-// 				//allocate new space for bin
-// 				if(thread_lane == 0)
-// 				{
-// 					INDEX_TYPE new_size = rlB + alpha;
-// 					INDEX_TYPE new_addr = atomicAdd(&row_sizes[num_rows], new_size);	//increase global memory pointer
+		if(rlB > 0)
+		{
+			//check to see if first bin has any memory allocated
+			if(rlA == 0 && A_row_start == A_row_end)
+			{
+				//allocate new space for bin
+				if(thread_lane == 0)
+				{
+					INDEX_TYPE new_size = rlB + alpha;
+					INDEX_TYPE new_addr = atomicAdd(&row_sizes[num_rows], new_size);	//increase global memory pointer
 					
-// 					new_segment[vector_lane] = new_addr;
-// 					row_offsets[row*2] = new_addr;
-// 					row_offsets[row*2 + 1] = new_addr + new_size;
-// 				}
+					new_segment[vector_lane] = new_addr;
+					row_offsets[row*2] = new_addr;
+					row_offsets[row*2 + 1] = new_addr + new_size;
+				}
 
-// 				A_idx = new_segment[vector_lane];
-// 			}
-// 			else
-// 			{
-// 				if(rlA > 0)
-// 				{
-// 					while(A_idx < rlA)
-// 					{
-// 						A_idx += A_row_end - A_row_start;
-// 						if(A_idx < rlA)
-// 						{
-// 							Aoffset++;
-// 							A_row_start = row_offsets[Aoffset*pitch + row*2];
-// 							A_row_end = row_offsets[Aoffset*pitch + row*2 + 1];
-// 						}
-// 					}
+				A_idx = new_segment[vector_lane];
+			}
+			else
+			{
+				if(rlA > 0)
+				{
+					while(A_idx < rlA)
+					{
+						A_idx += A_row_end - A_row_start;
+						if(A_idx < rlA)
+						{
+							Aoffset++;
+							A_row_start = row_offsets[Aoffset*pitch + row*2];
+							A_row_end = row_offsets[Aoffset*pitch + row*2 + 1];
+						}
+					}
 
-// 					A_idx = A_row_end + rlA - A_idx;
-// 				}
-// 				else
-// 					A_idx = A_row_start;
+					A_idx = A_row_end + rlA - A_idx;
+				}
+				else
+					A_idx = A_row_start;
 
-// 				free_mem = A_row_end - A_idx;
-// 				//allocate new space for bin
-// 				if(thread_lane == 0 && free_mem < rlB)
-// 				{
-// 					if(Aoffset + 1 >= BINS)
-// 					{
-// 						cuPrintf("segment overlow**  Aoffset: %d  row: %d  rlA: %d  rlB: %d\n", Aoffset, row, rlA, rlB);
-// 						//break;
-// 					}
+				free_mem = A_row_end - A_idx;
+				//allocate new space for bin
+				if(thread_lane == 0 && free_mem < rlB)
+				{
+					if(Aoffset + 1 >= BINS)
+					{
+						cuPrintf("segment overlow**  Aoffset: %d  row: %d  rlA: %d  rlB: %d\n", Aoffset, row, rlA, rlB);
+						//break;
+					}
 
-// 					INDEX_TYPE new_size = rlB - free_mem + alpha;
-// 					INDEX_TYPE new_addr = atomicAdd(&row_sizes[num_rows], new_size);	//increase global memory pointer
+					INDEX_TYPE new_size = rlB - free_mem + alpha;
+					INDEX_TYPE new_addr = atomicAdd(&row_sizes[num_rows], new_size);	//increase global memory pointer
 
-// 					row_offsets[(Aoffset+1)*pitch + row*2] = new_addr;
-// 					row_offsets[(Aoffset+1)*pitch + row*2 + 1] = new_addr + new_size;
-// 				}
-// 			}
+					row_offsets[(Aoffset+1)*pitch + row*2] = new_addr;
+					row_offsets[(Aoffset+1)*pitch + row*2 + 1] = new_addr + new_size;
+				}
+			}
 
-// 			for(INDEX_TYPE B_idx = B_row_start; B_idx < B_row_end; B_idx++, A_idx++)
-// 			{
-// 				if(A_idx >= A_row_end)
-// 				{
-// 					INDEX_TYPE pos = A_idx - A_row_end;
-// 					Aoffset++;
-// 					A_row_start = row_offsets[Aoffset*pitch + row*2];
-// 					A_row_end = row_offsets[Aoffset*pitch + row*2 + 1];
-// 					A_idx = A_row_start + pos;
-// 				}
+			for(INDEX_TYPE B_idx = B_row_start; B_idx < B_row_end; B_idx++, A_idx++)
+			{
+				if(A_idx >= A_row_end)
+				{
+					INDEX_TYPE pos = A_idx - A_row_end;
+					Aoffset++;
+					A_row_start = row_offsets[Aoffset*pitch + row*2];
+					A_row_end = row_offsets[Aoffset*pitch + row*2 + 1];
+					A_idx = A_row_start + pos;
+				}
 
-// 				Aj[A_idx] = src_cols[B_idx];
-// 				Ax[A_idx] = src_vals[B_idx];
-// 			}
+				Aj[A_idx] = src_cols[B_idx];
+				Ax[A_idx] = src_vals[B_idx];
+			}
 
-// 			row_sizes[row] += rlB;
-// 		}
-// 	}
-// }
+			row_sizes[row] += rlB;
+		}
+	}
+}
 
 template <typename INDEX_TYPE, typename VALUE_TYPE>
 __launch_bounds__(BLOCK_THREAD_SIZE,1)
