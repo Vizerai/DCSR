@@ -130,34 +130,34 @@ void LoadMatrix(	cusp::csr_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &
 //*******************************************************************************************//
 //Load matrices from a CSR matrix
 //*******************************************************************************************//
-template <typename INDEX_TYPE, typename VALUE_TYPE>
-void LoadMatrix(	cusp::csr_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &src,
-					cusp::ell_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &dst)
-{
-	dst.resize(src.num_rows, src.num_cols, src.num_entries, std::max(src.num_cols/16, ulong(64)));
+// template <typename INDEX_TYPE, typename VALUE_TYPE>
+// void LoadMatrix(	cusp::csr_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &src,
+// 					cusp::ell_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &dst)
+// {
+// 	dst.resize(src.num_rows, src.num_cols, src.num_entries, std::max(src.num_cols/16, ulong(64)));
 
-	mat_info<INDEX_TYPE> infoDst;
-	get_matrix_info(dst, infoDst);
+// 	mat_info<INDEX_TYPE> infoDst;
+// 	get_matrix_info(dst, infoDst);
 
-#if(DEBUG)
-	assert(src.num_rows == infoDst.num_rows);
-	assert(src.num_cols == infoDst.num_cols);
-#endif
+// #if(DEBUG)
+// 	assert(src.num_rows == infoDst.num_rows);
+// 	assert(src.num_cols == infoDst.num_cols);
+// #endif
 
-	const size_t NUM_BLOCKS = BLOCKS;
-	const size_t BLOCK_SIZE = BLOCK_THREAD_SIZE;
+// 	const size_t NUM_BLOCKS = BLOCKS;
+// 	const size_t BLOCK_SIZE = BLOCK_THREAD_SIZE;
 
-	LoadEllMatrix<INDEX_TYPE, VALUE_TYPE> <<<NUM_BLOCKS, BLOCK_SIZE>>> (
-			src.num_rows,
-			src.num_entries,
-			infoDst.num_cols_per_row,
-			infoDst.pitch,
-			TPC(&src.row_offsets[0]),
-			TPC(&src.column_indices[0]),
-			TPC(&src.values[0]),
-			TPC(&dst.column_indices.values[0]),
-			TPC(&dst.values.values[0]));
-}
+// 	LoadEllMatrix<INDEX_TYPE, VALUE_TYPE> <<<NUM_BLOCKS, BLOCK_SIZE>>> (
+// 			src.num_rows,
+// 			src.num_entries,
+// 			infoDst.num_cols_per_row,
+// 			infoDst.pitch,
+// 			TPC(&src.row_offsets[0]),
+// 			TPC(&src.column_indices[0]),
+// 			TPC(&src.values[0]),
+// 			TPC(&dst.column_indices.values[0]),
+// 			TPC(&dst.values.values[0]));
+// }
 
 template <typename INDEX_TYPE, typename VALUE_TYPE>
 void LoadMatrix(	cusp::csr_matrix<INDEX_TYPE, VALUE_TYPE, cusp::device_memory> &dst,

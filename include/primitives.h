@@ -3,7 +3,6 @@
 
 #include "matrix_info.h"
 #include "primitives_device.h"
-#include "matrix_ops_device.h"
 
 #include "sparse_update.inl"
 
