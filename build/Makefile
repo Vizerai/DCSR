@@ -35,11 +35,11 @@ opt:
 debug:
 	$(MAKE) OPT_FLAGS="$(DEBUG)" NVCC_OPT_FLAGS="$(CUDA_DEBUG)"
 
-SRCS=../src/Matrix_Test.cu $(wildcard ../include/*.cu)
+SRCS=../src/Fill_Test.cu $(wildcard ../include/*.cu)
 OBJS=$(SRCS:.cu=.o)
 INCLUDE_FILES=$(wildcard ../include/*.h) $(wildcard ../include/*.inl)
 CUDA_INCLUDE_FILES=$(wildcard ../include/*.cuh) $(wildcard ../include/*.cinl)
-CPP_FILES=../src/main.cpp
+CPP_FILES=
 CPP_OBJS=$(CPP_FILES:.cpp=.o)
 
 %.o : %.cu $(INCLUDE_FILES) $(CUDA_INCLUDE_FILES)
