@@ -62,6 +62,7 @@ void FillTests(const std::string &filename)
 	fprintf(stderr, "VECTOR_SIZE: %d\n", __VECTOR_SIZE);
 
 	//Setup and initialize matrices
+	fprintf(stderr, "Initialize Matrices\n");
 #if(RUN_CSR == 1)
 	cusp::csr_matrix<int, PTYPE, cusp::device_memory> CSR_mat;
 	CSR_mat.resize(mat_rows, mat_cols, NNZ);
@@ -72,7 +73,7 @@ void FillTests(const std::string &filename)
 #endif
 #if(RUN_DCSR == 1)
 	dcsr_matrix<int, PTYPE, cusp::device_memory, BINS> DCSR_matA;
-	DCSR_matA.resize(mat_rows, mat_cols, bin_size);
+	DCSR_matA.resize(mat_rows, mat_cols, bin_size, 2.0);
 	device::Initialize_Matrix(DCSR_matA);
 #endif
 	//initialize streams
@@ -93,6 +94,7 @@ void FillTests(const std::string &filename)
 	cols_d = cols_h;
 	vals_d = vals_h;
 
+	fprintf(stderr, "Load Matrices\n");
 	#if(RUN_DCSR == 1)
 	LoadMatrix(DCSR_matA, rows_d, cols_d, vals_d, NNZ);
 	//LoadMatrix(DCSR_matA, CSR_mat_d);

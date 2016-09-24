@@ -11,12 +11,12 @@
 #define RUN_HYB                     0
 #define RUN_CSR                     1
 #define RUN_DCSR                    1
-#define SPMV_TEST                   0
-#define SPMM_TEST                   1
+#define SPMV_TEST                   1
+#define SPMM_TEST                   0
 #define USE_PARTIAL_VECTORS         0
 #define RUN_ADD                     0
 #define NUM_STREAMS                 8
-#define PRECISION                   64
+#define PRECISION                   32
 
 #define MEMORY_ALIGNMENT    4096
 #define ALIGN_UP(x,size)    ( ((size_t)x+(size-1))&(~(size-1)) ) //works for size that is a power of 2

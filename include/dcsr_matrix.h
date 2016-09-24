@@ -217,7 +217,7 @@ struct hyb_matrix         //hyb ELL matrix
 #include "primitives.h"
 #include "scan.h"
 #include "load.h"
-//#include "spmv.h"
-#include "spmm.h"
+#include "spmv.h"
+//#include "spmm.h"
 
 #endif

@@ -52,7 +52,7 @@ int ReadMatrixFile(	const std::string &filename,
 					cusp::array1d<VALUE_TYPE, cusp::host_memory> &val_vec,
 					int &mat_rows,
 					int &mat_cols,
-					bool zeroIndex = true)
+					bool zeroIndex = false)
 {
 	std::ifstream mat_file(filename.c_str());
 	int nnz = 0;
